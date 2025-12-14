@@ -1,0 +1,398 @@
+.track {
+  width: 100%;
+  background: rgba(20, 20, 35, 0.95);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  overflow: visible;
+  position: relative;
+}
+
+.track:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.track.muted {
+  opacity: 0.5;
+}
+
+/* Track Header */
+.track-header {
+  display: flex;
+  gap: 8px;
+}
+
+/* Track Actions (Mute/Solo) */
+.track-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.mute-btn.active {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: white;
+}
+
+.solo-btn.active {
+  background: #f1c40f;
+  border-color: #f1c40f;
+  color: #1a1a28;
+}
+
+/* Controls Section */
+.track-controls {
+  display: flex;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+
+.knobs-section {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  flex: 1;
+  justify-items: center;
+  align-items: flex-start;
+}
+
+/* Sound Preset Selector */
+.sound-preset-selector {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.selector-label {
+  display: block;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.sound-preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.sound-preset-btn {
+  padding: 4px 2px;
+  font-size: 8px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.sound-preset-btn:hover {
+  background: var(--preset-color);
+  border-color: var(--preset-color);
+  color: white;
+  box-shadow: 0 0 8px var(--preset-color);
+}
+
+/* Pattern Section */
+.pattern-section {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  padding: 8px;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
+.pattern-toggle {
+  margin-top: 6px;
+}
+
+.toggle-btn {
+  width: 100%;
+  padding: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.toggle-btn.active {
+  background: var(--track-color);
+  color: white;
+  border-color: var(--track-color);
+}
+
+/* Pattern Editor */
+.pattern-editor {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 2px;
+}
+
+.pattern-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.pattern-step.beat-start {
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.pattern-step:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.pattern-step.active {
+  background: var(--step-color);
+  box-shadow: 0 0 6px var(--step-color);
+}
+
+.pattern-step.current {
+  outline: 2px solid white;
+  outline-offset: -1px;
+}
+
+/* Pattern Accordion */
+.pattern-accordion {
+  width: 100%;
+}
+
+/* Accordion Header - Shows selected pattern */
+.accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.accordion-header:hover {
+  border-color: var(--accordion-color);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.header-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  flex: 1;
+}
+
+.header-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1px;
+}
+
+.header-step.active {
+  background: var(--accordion-color);
+}
+
+.header-step.current {
+  box-shadow: 0 0 4px white;
+}
+
+.header-name {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  min-width: 50px;
+  text-align: right;
+}
+
+.accordion-icon {
+  font-size: 14px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.5);
+  width: 16px;
+  text-align: center;
+}
+
+/* Accordion Content - All patterns */
+.accordion-content {
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+.accordion-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.accordion-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+.accordion-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.accordion-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Pattern option item */
+.pattern-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pattern-option:last-child {
+  border-bottom: none;
+}
+
+.pattern-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pattern-option.selected {
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--accordion-color);
+  padding-left: 5px;
+}
+
+.option-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  flex: 1;
+}
+
+.option-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1px;
+}
+
+.option-step.active {
+  background: var(--accordion-color);
+}
+
+.option-name {
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Old Presets Grid - keeping for reference but not used */
+.presets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.pattern-preset {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.pattern-preset:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pattern-preset.selected {
+  border-color: var(--preset-color);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.preset-mini-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  margin-bottom: 2px;
+}
+
+.preset-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1px;
+}
+
+.preset-step.active {
+  background: var(--preset-color);
+}
+
+.preset-step.current {
+  box-shadow: 0 0 4px white;
+}
+
+.preset-name {
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 8px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}

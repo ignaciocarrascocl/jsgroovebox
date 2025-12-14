@@ -1,0 +1,379 @@
+.chord-track {
+  width: 100%;
+  background: rgba(20, 20, 35, 0.95);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  overflow: visible;
+  position: relative;
+}
+
+.chord-track:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.chord-track.muted {
+  opacity: 0.5;
+}
+
+/* Common label styles */
+.selector-label {
+  display: block;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+/* Track Header */
+.chord-track-header {
+  display: flex;
+  gap: 8px;
+}
+
+/* Track Actions (Mute/Solo) */
+.chord-track-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chord-track-actions .action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.chord-track-actions .action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.chord-track-actions .mute-btn.active {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: white;
+}
+
+.chord-track-actions .solo-btn.active {
+  background: #f1c40f;
+  border-color: #f1c40f;
+  color: #1a1a28;
+}
+
+/* Controls Section */
+.chord-track-controls {
+  display: flex;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+
+.chord-knobs-section {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  flex: 1;
+  justify-items: center;
+  align-items: flex-start;
+}
+
+/* Sound Preset Selector */
+.chord-track .sound-preset-selector {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.chord-track .sound-preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.chord-track .sound-preset-btn {
+  padding: 4px 2px;
+  font-size: 7px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.chord-track .sound-preset-btn:hover {
+  background: var(--preset-color);
+  border-color: var(--preset-color);
+  color: white;
+}
+
+/* Pattern Section */
+.chord-pattern-section {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 6px;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
+.pattern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* Chord Pattern Accordion */
+.chord-pattern-accordion {
+  width: 100%;
+}
+
+.chord-pattern-accordion .accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chord-pattern-accordion .accordion-header:hover {
+  border-color: var(--accordion-color);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.chord-pattern-accordion .header-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  flex: 1;
+}
+
+.chord-pattern-accordion .header-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1px;
+  transition: all 0.1s;
+}
+
+.chord-pattern-accordion .header-step.step-type-1 {
+  background: var(--accordion-color);
+}
+
+.chord-pattern-accordion .header-step.step-type-2 {
+  background: color-mix(in srgb, var(--accordion-color) 80%, yellow);
+}
+
+.chord-pattern-accordion .header-step.step-type-3 {
+  background: color-mix(in srgb, var(--accordion-color) 60%, cyan);
+}
+
+.chord-pattern-accordion .header-step.step-type-4 {
+  background: color-mix(in srgb, var(--accordion-color) 90%, white);
+}
+
+.chord-pattern-accordion .header-step.current {
+  box-shadow: 0 0 4px white;
+}
+
+.chord-pattern-accordion .header-name {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  min-width: 80px;
+  text-align: right;
+}
+
+.chord-pattern-accordion .accordion-icon {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  width: 16px;
+  text-align: center;
+}
+
+.chord-pattern-accordion .accordion-content {
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.chord-pattern-accordion .pattern-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chord-pattern-accordion .pattern-option:last-child {
+  border-bottom: none;
+}
+
+.chord-pattern-accordion .pattern-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chord-pattern-accordion .pattern-option.selected {
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 2px solid var(--accordion-color);
+}
+
+.chord-pattern-accordion .option-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  flex: 1;
+}
+
+.chord-pattern-accordion .option-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1px;
+}
+
+.chord-pattern-accordion .option-step.step-type-1 {
+  background: var(--accordion-color);
+}
+
+.chord-pattern-accordion .option-step.step-type-2 {
+  background: color-mix(in srgb, var(--accordion-color) 80%, yellow);
+}
+
+.chord-pattern-accordion .option-step.step-type-3 {
+  background: color-mix(in srgb, var(--accordion-color) 60%, cyan);
+}
+
+.chord-pattern-accordion .option-step.step-type-4 {
+  background: color-mix(in srgb, var(--accordion-color) 90%, white);
+}
+
+.chord-pattern-accordion .option-name {
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  min-width: 80px;
+  text-align: right;
+}
+
+.current-pattern-name {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--track-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chord-pattern-section .pattern-toggle {
+  margin-top: 6px;
+}
+
+.chord-pattern-section .toggle-btn {
+  width: 100%;
+  padding: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chord-pattern-section .toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chord-pattern-section .toggle-btn.active {
+  background: var(--track-color);
+  color: white;
+  border-color: var(--track-color);
+}
+
+/* Chord Pattern Editor */
+.chord-pattern-editor {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 2px;
+}
+
+.chord-pattern-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6px;
+  font-weight: 700;
+  color: transparent;
+}
+
+.chord-pattern-step.beat-start {
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.chord-pattern-step:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.chord-pattern-step.step-type-1 {
+  background: var(--step-color);
+  color: white;
+}
+
+.chord-pattern-step.step-type-2 {
+  background: color-mix(in srgb, var(--step-color) 80%, yellow);
+  color: white;
+}
+
+.chord-pattern-step.step-type-3 {
+  background: color-mix(in srgb, var(--step-color) 60%, cyan);
+  color: #1a1a28;
+}
+
+.chord-pattern-step.step-type-4 {
+  background: color-mix(in srgb, var(--step-color) 90%, white);
+  color: #1a1a28;
+}
+
+.chord-pattern-step.current {
+  outline: 2px solid white;
+  outline-offset: -1px;
+}

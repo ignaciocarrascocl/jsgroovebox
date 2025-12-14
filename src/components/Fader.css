@@ -1,0 +1,74 @@
+.fader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+.fader-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fader-track {
+  width: 8px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fader-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, var(--fader-color), rgba(255, 255, 255, 0.3));
+  border-radius: 0 0 3px 3px;
+  opacity: 0.6;
+  transition: height 0.05s ease-out;
+}
+
+.fader-handle {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  width: 20px;
+  height: 10px;
+  background: linear-gradient(to bottom, #555, #333);
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  cursor: grab;
+  transition: bottom 0.05s ease-out;
+}
+
+.fader-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  right: 3px;
+  height: 1px;
+  background: var(--fader-color);
+  box-shadow: 0 0 4px var(--fader-color);
+}
+
+.fader-handle:active {
+  cursor: grabbing;
+}
+
+.fader-value {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 8px;
+  font-family: monospace;
+  min-width: 24px;
+  text-align: center;
+}

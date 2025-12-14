@@ -1,0 +1,468 @@
+.bass-track {
+  width: 100%;
+  background: rgba(20, 20, 35, 0.95);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  overflow: visible;
+  position: relative;
+}
+
+.bass-track:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.bass-track.muted {
+  opacity: 0.5;
+}
+
+/* Common label styles */
+.selector-label {
+  display: block;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+/* Track Header */
+.bass-track-header {
+  display: flex;
+  gap: 8px;
+}
+
+/* Track Actions (Mute/Solo) */
+.bass-track-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bass-track-actions .action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.bass-track-actions .action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bass-track-actions .mute-btn.active {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: white;
+}
+
+.bass-track-actions .solo-btn.active {
+  background: #f1c40f;
+  border-color: #f1c40f;
+  color: #1a1a28;
+}
+
+/* Controls Section */
+.bass-track-controls {
+  display: flex;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+
+.bass-knobs-section {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  flex: 1;
+  justify-items: center;
+  align-items: flex-start;
+}
+
+/* Wave Selector */
+.wave-selector {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.wave-buttons {
+  display: flex;
+  gap: 3px;
+}
+
+.wave-btn {
+  flex: 1;
+  padding: 4px 2px;
+  font-size: 8px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wave-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.wave-btn.active {
+  background: var(--track-color);
+  border-color: var(--track-color);
+  color: white;
+}
+
+/* Sound Preset Selector */
+.bass-track .sound-preset-selector {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.bass-track .sound-preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.bass-track .sound-preset-btn {
+  padding: 4px 2px;
+  font-size: 7px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.bass-track .sound-preset-btn:hover {
+  background: var(--preset-color);
+  border-color: var(--preset-color);
+  color: white;
+}
+
+/* Pattern Section */
+.bass-pattern-section {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 6px;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
+.pattern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* Bass Pattern Accordion - like drum tracks */
+.bass-pattern-accordion {
+  width: 100%;
+}
+
+.bass-pattern-accordion .accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.bass-pattern-accordion .accordion-header:hover {
+  border-color: var(--accordion-color);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.bass-pattern-accordion .header-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  flex: 1;
+}
+
+.bass-pattern-accordion .header-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1px;
+  transition: all 0.1s;
+}
+
+.bass-pattern-accordion .header-step.step-type-1 {
+  background: var(--accordion-color);
+}
+
+.bass-pattern-accordion .header-step.step-type-2 {
+  background: color-mix(in srgb, var(--accordion-color) 70%, white);
+}
+
+.bass-pattern-accordion .header-step.step-type-3 {
+  background: color-mix(in srgb, var(--accordion-color) 50%, white);
+}
+
+.bass-pattern-accordion .header-step.current {
+  box-shadow: 0 0 4px white;
+}
+
+.bass-pattern-accordion .header-name {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  min-width: 60px;
+  text-align: right;
+}
+
+.bass-pattern-accordion .accordion-icon {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  width: 16px;
+  text-align: center;
+}
+
+.bass-pattern-accordion .accordion-content {
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.bass-pattern-accordion .pattern-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bass-pattern-accordion .pattern-option:last-child {
+  border-bottom: none;
+}
+
+.bass-pattern-accordion .pattern-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bass-pattern-accordion .pattern-option.selected {
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 2px solid var(--accordion-color);
+}
+
+.bass-pattern-accordion .option-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  flex: 1;
+}
+
+.bass-pattern-accordion .option-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1px;
+}
+
+.bass-pattern-accordion .option-step.step-type-1 {
+  background: var(--accordion-color);
+}
+
+.bass-pattern-accordion .option-step.step-type-2 {
+  background: color-mix(in srgb, var(--accordion-color) 70%, white);
+}
+
+.bass-pattern-accordion .option-step.step-type-3 {
+  background: color-mix(in srgb, var(--accordion-color) 50%, white);
+}
+
+.bass-pattern-accordion .option-name {
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  min-width: 60px;
+  text-align: right;
+}
+
+.current-pattern-name {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--track-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Bass Presets Grid - kept for reference */
+.bass-pattern-section .bass-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.bass-pattern-section .pattern-toggle {
+  margin-top: 6px;
+}
+
+.bass-pattern-section .toggle-btn {
+  width: 100%;
+  padding: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bass-pattern-section .toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.bass-pattern-section .toggle-btn.active {
+  background: var(--track-color);
+  color: white;
+  border-color: var(--track-color);
+}
+
+/* Bass Pattern Editor */
+.bass-pattern-editor {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 2px;
+}
+
+.bass-pattern-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6px;
+  font-weight: 700;
+  color: transparent;
+}
+
+.bass-pattern-step.beat-start {
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.bass-pattern-step:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.bass-pattern-step.step-type-1 {
+  background: var(--step-color);
+  color: white;
+}
+
+.bass-pattern-step.step-type-2 {
+  background: color-mix(in srgb, var(--step-color) 70%, white);
+  color: white;
+}
+
+.bass-pattern-step.step-type-3 {
+  background: color-mix(in srgb, var(--step-color) 50%, white);
+  color: #1a1a28;
+}
+
+.bass-pattern-step.current {
+  outline: 2px solid white;
+  outline-offset: -1px;
+}
+
+/* Bass Preset Button */
+.bass-preset {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 5px;
+  padding: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.bass-preset:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.bass-preset.selected {
+  border-color: var(--preset-color);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.bass-preset-pattern {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 1px;
+  margin-bottom: 2px;
+}
+
+.bass-preset-step {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1px;
+}
+
+.bass-preset-step.step-type-1 {
+  background: var(--preset-color);
+}
+
+.bass-preset-step.step-type-2 {
+  background: color-mix(in srgb, var(--preset-color) 70%, white);
+}
+
+.bass-preset-step.step-type-3 {
+  background: color-mix(in srgb, var(--preset-color) 50%, white);
+}
+
+.bass-preset-name {
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 7px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
