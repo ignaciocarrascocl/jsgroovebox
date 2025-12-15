@@ -1,6 +1,6 @@
 .master-wave-meter {
   width: 100%;
-  height: 90px;
+  height: 160px;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -29,6 +29,136 @@
   justify-content: flex-end;
 }
 
+.mwm-readouts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.mwm-readout {
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.20);
+}
+
+.mwm-readout.hot {
+  border-color: rgba(255, 107, 107, 0.35);
+  box-shadow: 0 0 14px rgba(255, 107, 107, 0.14);
+}
+
+.mwm-readout-label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mwm-readout-value {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.88);
+  font-variant-numeric: tabular-nums;
+}
+
+.mwm-metrics {
+  padding: 0 10px 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mwm-metric {
+  display: grid;
+  gap: 6px;
+}
+
+.mwm-metric-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mwm-metric-name {
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mwm-metric-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.52);
+  text-align: right;
+  line-height: 1.2;
+}
+
+.mwm-bar {
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background:
+    linear-gradient(90deg,
+      rgba(34, 197, 94, 0.20) 0%,
+      rgba(34, 197, 94, 0.20) 78%,
+      rgba(245, 158, 11, 0.22) 78%,
+      rgba(245, 158, 11, 0.22) 92%,
+      rgba(239, 68, 68, 0.28) 92%,
+      rgba(239, 68, 68, 0.28) 100%
+    ),
+    rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  position: relative;
+}
+
+.mwm-bar-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mwm-bar-marker {
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: calc(100% + 4px);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mwm-bar-marker.zero {
+  background: rgba(255, 255, 255, 0.65);
+  width: 2px;
+}
+
+.mwm-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  transition: width 60ms linear;
+  position: relative;
+}
+
+/* peak hold / head (visual cue) */
+.mwm-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: 0;
+  width: 2px;
+  height: calc(100% + 6px);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+}
+
+.mwm-bar-peak {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.40), rgba(255, 107, 107, 0.85));
+}
+
+.mwm-bar-rms {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.25), rgba(78, 205, 196, 0.85));
+}
+
 .mwm-pill {
   font-size: 11px;
   font-weight: 800;
@@ -48,6 +178,18 @@
 
 .mwm-canvas {
   width: 100%;
-  height: calc(100% - 28px);
+  height: calc(100% - 28px - 56px);
   display: block;
+}
+
+@media (max-width: 900px) {
+  .mwm-metrics {
+    grid-template-columns: 1fr;
+  }
+  .master-wave-meter {
+    height: 210px;
+  }
+  .mwm-canvas {
+    height: calc(100% - 28px - 104px);
+  }
 }

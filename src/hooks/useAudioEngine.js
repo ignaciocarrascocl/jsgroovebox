@@ -162,6 +162,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const [bpm, setBpm] = useState(120)
   const [activeTracks, setActiveTracks] = useState({})
   const [masterMeter, setMasterMeter] = useState({ waveform: [], peakDb: -Infinity, rmsDb: -Infinity })
+  const masterNodeRef = useRef(null)
   const [perfStats, setPerfStats] = useState({ fps: undefined, usedJSHeapSizeMb: undefined })
   
   const synthsRef = useRef({})
@@ -179,7 +180,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
 
     const loop = (t) => {
       frames += 1
-      if (t - lastEmit > 500) {
+  // Emit at ~2Hz to reduce re-renders.
+  if (t - lastEmit > 1000) {
         const fps = frames / ((t - lastEmit) / 1000)
         frames = 0
         lastEmit = t
@@ -332,6 +334,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       waveformAnalyser,
       meter,
     }
+
+  // Expose masterGain so UI components can tap into the live master output.
+  // Tone.Gain wraps a WebAudio node, but it implements .connect() like an AudioNode.
+  masterNodeRef.current = masterGain
 
     // Create effects for each track
     effectsRef.current = {
@@ -513,13 +519,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       effectsRef.current.chords.lfo.connect(effectsRef.current.chords.filter.frequency)
       effectsRef.current.chords.lfo.start()
       
-  synthsRef.current.chords = new Tone.PolySynth(Tone.FMSynth, {
-        harmonicity: 1,
-        modulationIndex: 0,
+  // NOTE: We intentionally don't use FM here; chords are a classic subtractive polysynth.
+  synthsRef.current.chords = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: 'sawtooth' },
-        modulation: { type: 'sine' },
         envelope: { attack: 0.05, decay: 0.4, sustain: 0.2, release: 0.3 },
-        modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 },
       })
       synthsRef.current.chords.chain(
         effectsRef.current.chords.compressor,
@@ -619,13 +622,24 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   // Meter + waveform polling
   useEffect(() => {
     if (!toneStarted) return
+    // Only animate meter when transport is running.
+    // This freezes *all* UI elements driven by `masterMeter` (waveform + readouts + bars)
+    // when audio isn't actively playing.
+  if (!isPlaying) return
     let raf = 0
+    let last = 0
+
+    // Reuse a single array to avoid allocating/copying 1024 samples every frame.
+    // We'll only publish to React state at a lower rate (see below).
+    let wfOut = []
 
     const tick = () => {
+      const now = performance.now()
       const mixer = mixerRef.current
       const wf = mixer?.waveformAnalyser?.getValue?.() || []
       const val = mixer?.meter?.getValue?.() ?? 0
       const peak = Math.max(1e-8, Math.abs(val))
+  const peakDb = dbFromRms(peak)
       // Meter may be peak-like. We'll approximate RMS from waveform.
       let rms = 0
       if (wf?.length) {
@@ -633,17 +647,32 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         for (let i = 0; i < wf.length; i++) s += wf[i] * wf[i]
         rms = Math.sqrt(s / wf.length)
       }
-      setMasterMeter({
-        waveform: Array.isArray(wf) ? wf : Array.from(wf),
-        peakDb: dbFromRms(peak),
-        rmsDb: dbFromRms(rms),
-      })
+
+      // Publish ~30fps max. (Visuals will still look smooth, but CPU/GC drops a lot.)
+      if (now - last > 33) {
+        last = now
+
+        // Ensure we store a plain array. Prefer reusing the previous buffer when possible.
+        if (Array.isArray(wf)) {
+          wfOut = wf
+        } else {
+          const len = wf.length ?? 0
+          if (!wfOut || wfOut.length !== len) wfOut = Array.from({ length: len })
+          for (let i = 0; i < len; i++) wfOut[i] = wf[i]
+        }
+
+        setMasterMeter({
+          waveform: wfOut,
+          peakDb,
+          rmsDb: dbFromRms(rms),
+        })
+      }
       raf = requestAnimationFrame(tick)
     }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [toneStarted])
+  }, [toneStarted, isPlaying])
 
   // Update track parameters in real-time (without recreating synths)
   useEffect(() => {
@@ -656,13 +685,13 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
     applyCompressionAmount(effectsRef.current.kick?.compressor, trackParams[1]?.compression)
     if (effectsRef.current.kick?.filter) {
-      effectsRef.current.kick.filter.frequency.linearRampTo(trackParams[1]?.filter || 800, 0.1)
+  effectsRef.current.kick.filter.frequency.linearRampTo(trackParams[1]?.filter ?? 800, 0.1)
     }
     if (effectsRef.current.kick?.delay) {
       // (deprecated)
     }
-    if (effectsRef.current.kick?.delaySend) effectsRef.current.kick.delaySend.gain.rampTo(clamp(trackParams[1]?.delay || 0, 0, 1), 0.1)
-    if (effectsRef.current.kick?.reverbSend) effectsRef.current.kick.reverbSend.gain.rampTo(clamp(trackParams[1]?.reverb || 0, 0, 1), 0.1)
+  if (effectsRef.current.kick?.delaySend) effectsRef.current.kick.delaySend.gain.rampTo(clamp(trackParams[1]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.kick?.reverbSend) effectsRef.current.kick.reverbSend.gain.rampTo(clamp(trackParams[1]?.reverb ?? 0, 0, 1), 0.1)
 
     // Update snare
     if (synthsRef.current.snare) {
@@ -671,12 +700,12 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
     applyCompressionAmount(effectsRef.current.snare?.compressor, trackParams[2]?.compression)
     if (effectsRef.current.snare?.filter) {
-      const base = trackParams[2]?.filter || 4000
-      const mult = pitchToMultiplier(trackParams[2]?.pitch || 0)
+    const base = trackParams[2]?.filter ?? 4000
+    const mult = pitchToMultiplier(trackParams[2]?.pitch ?? 0)
       effectsRef.current.snare.filter.frequency.linearRampTo(clamp(base * mult, 20, 20000), 0.1)
     }
-  if (effectsRef.current.snare?.delaySend) effectsRef.current.snare.delaySend.gain.rampTo(clamp(trackParams[2]?.delay || 0, 0, 1), 0.1)
-  if (effectsRef.current.snare?.reverbSend) effectsRef.current.snare.reverbSend.gain.rampTo(clamp(trackParams[2]?.reverb || 0.15, 0, 1), 0.1)
+  if (effectsRef.current.snare?.delaySend) effectsRef.current.snare.delaySend.gain.rampTo(clamp(trackParams[2]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.snare?.reverbSend) effectsRef.current.snare.reverbSend.gain.rampTo(clamp(trackParams[2]?.reverb ?? 0.15, 0, 1), 0.1)
 
     // Update hihat
     if (synthsRef.current.hihat) {
@@ -685,10 +714,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
     applyCompressionAmount(effectsRef.current.hihat?.compressor, trackParams[3]?.compression)
     if (effectsRef.current.hihat?.filter) {
-      effectsRef.current.hihat.filter.frequency.linearRampTo(trackParams[3]?.filter || 6000, 0.1)
+    effectsRef.current.hihat.filter.frequency.linearRampTo(trackParams[3]?.filter ?? 6000, 0.1)
     }
-  if (effectsRef.current.hihat?.delaySend) effectsRef.current.hihat.delaySend.gain.rampTo(clamp(trackParams[3]?.delay || 0, 0, 1), 0.1)
-  if (effectsRef.current.hihat?.reverbSend) effectsRef.current.hihat.reverbSend.gain.rampTo(clamp(trackParams[3]?.reverb || 0, 0, 1), 0.1)
+  if (effectsRef.current.hihat?.delaySend) effectsRef.current.hihat.delaySend.gain.rampTo(clamp(trackParams[3]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.hihat?.reverbSend) effectsRef.current.hihat.reverbSend.gain.rampTo(clamp(trackParams[3]?.reverb ?? 0, 0, 1), 0.1)
 
     // Update openHH
     if (synthsRef.current.openHH) {
@@ -697,10 +726,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
     applyCompressionAmount(effectsRef.current.openHH?.compressor, trackParams[4]?.compression)
     if (effectsRef.current.openHH?.filter) {
-      effectsRef.current.openHH.filter.frequency.linearRampTo(trackParams[4]?.filter || 5000, 0.1)
+    effectsRef.current.openHH.filter.frequency.linearRampTo(trackParams[4]?.filter ?? 5000, 0.1)
     }
-  if (effectsRef.current.openHH?.delaySend) effectsRef.current.openHH.delaySend.gain.rampTo(clamp(trackParams[4]?.delay || 0, 0, 1), 0.1)
-  if (effectsRef.current.openHH?.reverbSend) effectsRef.current.openHH.reverbSend.gain.rampTo(clamp(trackParams[4]?.reverb || 0.1, 0, 1), 0.1)
+  if (effectsRef.current.openHH?.delaySend) effectsRef.current.openHH.delaySend.gain.rampTo(clamp(trackParams[4]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.openHH?.reverbSend) effectsRef.current.openHH.reverbSend.gain.rampTo(clamp(trackParams[4]?.reverb ?? 0.1, 0, 1), 0.1)
 
     // Update tom
     if (synthsRef.current.tom) {
@@ -709,10 +738,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
     applyCompressionAmount(effectsRef.current.tom?.compressor, trackParams[5]?.compression)
     if (effectsRef.current.tom?.filter) {
-      effectsRef.current.tom.filter.frequency.linearRampTo(trackParams[5]?.filter || 1200, 0.1)
+    effectsRef.current.tom.filter.frequency.linearRampTo(trackParams[5]?.filter ?? 1200, 0.1)
     }
-  if (effectsRef.current.tom?.delaySend) effectsRef.current.tom.delaySend.gain.rampTo(clamp(trackParams[5]?.delay || 0, 0, 1), 0.1)
-  if (effectsRef.current.tom?.reverbSend) effectsRef.current.tom.reverbSend.gain.rampTo(clamp(trackParams[5]?.reverb || 0.1, 0, 1), 0.1)
+  if (effectsRef.current.tom?.delaySend) effectsRef.current.tom.delaySend.gain.rampTo(clamp(trackParams[5]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.tom?.reverbSend) effectsRef.current.tom.reverbSend.gain.rampTo(clamp(trackParams[5]?.reverb ?? 0.1, 0, 1), 0.1)
 
     // Update clap
     if (synthsRef.current.clap) {
@@ -721,12 +750,12 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
     applyCompressionAmount(effectsRef.current.clap?.compressor, trackParams[9]?.compression)
     if (effectsRef.current.clap?.filter) {
-      const base = trackParams[9]?.filter || 4000
-      const mult = pitchToMultiplier(trackParams[9]?.pitch || 0)
+    const base = trackParams[9]?.filter ?? 4000
+    const mult = pitchToMultiplier(trackParams[9]?.pitch ?? 0)
       effectsRef.current.clap.filter.frequency.linearRampTo(clamp(base * mult, 20, 20000), 0.1)
     }
-  if (effectsRef.current.clap?.delaySend) effectsRef.current.clap.delaySend.gain.rampTo(clamp(trackParams[9]?.delay || 0, 0, 1), 0.1)
-  if (effectsRef.current.clap?.reverbSend) effectsRef.current.clap.reverbSend.gain.rampTo(clamp(trackParams[9]?.reverb || 0.2, 0, 1), 0.1)
+  if (effectsRef.current.clap?.delaySend) effectsRef.current.clap.delaySend.gain.rampTo(clamp(trackParams[9]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.clap?.reverbSend) effectsRef.current.clap.reverbSend.gain.rampTo(clamp(trackParams[9]?.reverb ?? 0.2, 0, 1), 0.1)
   }, [trackParams, toneStarted])
 
   // Update bass parameters in real-time
@@ -737,36 +766,36 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       synthsRef.current.bass.volume.rampTo(bassParams[6]?.volume ?? -6, 0.1)
       
       // Update oscillator type
-      const waveType = bassParams[6]?.waveType || 'sawtooth'
+    const waveType = bassParams[6]?.waveType ?? 'sawtooth'
       if (synthsRef.current.bass.oscillator.type !== waveType) {
         synthsRef.current.bass.oscillator.type = waveType
       }
       
       // Update detune
-      synthsRef.current.bass.detune.linearRampTo(bassParams[6]?.detune || 0, 0.1)
+    synthsRef.current.bass.detune.linearRampTo(bassParams[6]?.detune ?? 0, 0.1)
       
       // Update envelope
-      synthsRef.current.bass.envelope.attack = bassParams[6]?.attack || 0.01
-      synthsRef.current.bass.envelope.decay = bassParams[6]?.decay || 0.3
+    synthsRef.current.bass.envelope.attack = bassParams[6]?.attack ?? 0.01
+    synthsRef.current.bass.envelope.decay = bassParams[6]?.decay ?? 0.3
       synthsRef.current.bass.envelope.sustain = 0.1
       synthsRef.current.bass.envelope.release = 0.1
     }
     
     if (effectsRef.current.bass?.filter) {
-      effectsRef.current.bass.filter.frequency.linearRampTo(bassParams[6]?.filter || 800, 0.1)
-      effectsRef.current.bass.filter.Q.linearRampTo(bassParams[6]?.resonance || 1, 0.1)
+    effectsRef.current.bass.filter.frequency.linearRampTo(bassParams[6]?.filter ?? 800, 0.1)
+    effectsRef.current.bass.filter.Q.linearRampTo(bassParams[6]?.resonance ?? 1, 0.1)
     }
     if (effectsRef.current.bass?.lfo) {
-      const lfoRate = bassParams[6]?.lfoRate || 0
-      const lfoDepth = bassParams[6]?.lfoDepth || 0
-      const filterFreq = bassParams[6]?.filter || 800
+    const lfoRate = bassParams[6]?.lfoRate ?? 0
+    const lfoDepth = bassParams[6]?.lfoDepth ?? 0
+    const filterFreq = bassParams[6]?.filter ?? 800
       effectsRef.current.bass.lfo.frequency.linearRampTo(lfoRate, 0.1)
       effectsRef.current.bass.lfo.min = Math.max(20, filterFreq - lfoDepth)
       effectsRef.current.bass.lfo.max = Math.min(20000, filterFreq + lfoDepth)
     }
     applyCompressionAmount(effectsRef.current.bass?.compressor, bassParams[6]?.compression)
-  if (effectsRef.current.bass?.delaySend) effectsRef.current.bass.delaySend.gain.rampTo(clamp(bassParams[6]?.delay || 0, 0, 1), 0.1)
-  if (effectsRef.current.bass?.reverbSend) effectsRef.current.bass.reverbSend.gain.rampTo(clamp(bassParams[6]?.reverb || 0, 0, 1), 0.1)
+  if (effectsRef.current.bass?.delaySend) effectsRef.current.bass.delaySend.gain.rampTo(clamp(bassParams[6]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.bass?.reverbSend) effectsRef.current.bass.reverbSend.gain.rampTo(clamp(bassParams[6]?.reverb ?? 0, 0, 1), 0.1)
   }, [bassParams, toneStarted])
 
   // Update chord parameters in real-time
@@ -776,43 +805,36 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     if (synthsRef.current.chords) {
       synthsRef.current.chords.volume.rampTo(chordParams[7]?.volume ?? -10, 0.1)
       
-      // Update oscillator / envelopes / FM amount for PolySynth
-      const waveType = chordParams[7]?.waveType || 'sawtooth'
-
-      const fmAmount = clamp(chordParams[7]?.fm ?? 0, 0, 1)
-      const fmHarmonicity = clamp(chordParams[7]?.fmHarmonicity ?? 1, 0.25, 8)
-      // Keep FM musical and predictable. Range chosen to avoid instant harshness.
-      const modulationIndex = 12 * fmAmount
+      // Update oscillator / envelopes for PolySynth (no FM)
+      const waveType = chordParams[7]?.waveType ?? 'sawtooth'
 
       synthsRef.current.chords.set({
         oscillator: { type: waveType },
-        harmonicity: fmHarmonicity,
-        modulationIndex,
-        envelope: { 
-          attack: chordParams[7]?.attack || 0.05, 
-          decay: chordParams[7]?.decay || 0.4,
+        envelope: {
+          attack: chordParams[7]?.attack ?? 0.05,
+          decay: chordParams[7]?.decay ?? 0.4,
           sustain: 0.2,
-          release: 0.3
+          release: 0.3,
         },
-        detune: chordParams[7]?.detune || 5
+        detune: chordParams[7]?.detune ?? 5,
       })
     }
     
     if (effectsRef.current.chords?.filter) {
-      effectsRef.current.chords.filter.frequency.linearRampTo(chordParams[7]?.filter || 2500, 0.1)
-      effectsRef.current.chords.filter.Q.linearRampTo(chordParams[7]?.resonance || 2, 0.1)
+      effectsRef.current.chords.filter.frequency.linearRampTo(chordParams[7]?.filter ?? 2500, 0.1)
+      effectsRef.current.chords.filter.Q.linearRampTo(chordParams[7]?.resonance ?? 2, 0.1)
     }
     if (effectsRef.current.chords?.lfo) {
-      const lfoRate = chordParams[7]?.lfoRate || 0
-      const lfoDepth = chordParams[7]?.lfoDepth || 0
-      const filterFreq = chordParams[7]?.filter || 2500
+      const lfoRate = chordParams[7]?.lfoRate ?? 0
+      const lfoDepth = chordParams[7]?.lfoDepth ?? 0
+      const filterFreq = chordParams[7]?.filter ?? 2500
       effectsRef.current.chords.lfo.frequency.linearRampTo(lfoRate, 0.1)
       effectsRef.current.chords.lfo.min = Math.max(20, filterFreq - lfoDepth)
       effectsRef.current.chords.lfo.max = Math.min(20000, filterFreq + lfoDepth)
     }
     applyCompressionAmount(effectsRef.current.chords?.compressor, chordParams[7]?.compression)
-  if (effectsRef.current.chords?.delaySend) effectsRef.current.chords.delaySend.gain.rampTo(clamp(chordParams[7]?.delay || 0, 0, 1), 0.1)
-  if (effectsRef.current.chords?.reverbSend) effectsRef.current.chords.reverbSend.gain.rampTo(clamp(chordParams[7]?.reverb || 0.2, 0, 1), 0.1)
+  if (effectsRef.current.chords?.delaySend) effectsRef.current.chords.delaySend.gain.rampTo(clamp(chordParams[7]?.delay ?? 0, 0, 1), 0.1)
+  if (effectsRef.current.chords?.reverbSend) effectsRef.current.chords.reverbSend.gain.rampTo(clamp(chordParams[7]?.reverb ?? 0.2, 0, 1), 0.1)
   }, [chordParams, toneStarted])
 
   // Update BPM
@@ -1003,15 +1025,25 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       bassStepRef.current = 0
       chordStepRef.current = 0
     } else {
-      // Reset transport position to beginning
-      Tone.getTransport().position = 0
+      const transport = Tone.getTransport()
+
+      // If transport is paused, resume in place.
+      if (transport.state === 'paused') {
+        transport.start('+0.05')
+        // Do NOT restart sequencer to avoid resetting position.
+        setIsPlaying(true)
+        return
+      }
+
+      // Fresh start from the beginning
+      transport.position = 0
       bassStepRef.current = 0
       chordStepRef.current = 0
       setCurrentStep(0)
       setCurrentBassStep(0)
       setCurrentChordStep(0)
-      
-      Tone.getTransport().start('+0.1')
+
+      transport.start('+0.1')
       sequencerRef.current?.start('+0.1')
       setIsPlaying(true)
     }
@@ -1020,8 +1052,9 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const pause = useCallback(() => {
     if (!toneStarted) return
     if (!isPlaying) return
+    // Pause keeps position so we can resume.
     Tone.getTransport().pause()
-    sequencerRef.current?.stop()
+    // Keep the sequencer scheduled; it's driven by Transport time.
     setIsPlaying(false)
   }, [isPlaying, toneStarted])
 
@@ -1104,6 +1137,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   pause,
     playTrack,
   masterMeter,
+  getMasterNode: () => masterNodeRef.current,
   setMasterParams,
   setBusParams,
   perfStats,

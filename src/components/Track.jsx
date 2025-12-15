@@ -1,16 +1,9 @@
 import { useState } from 'react'
 import { getPatternOptions, DRUM_SOUND_PRESETS } from '../constants/patterns'
-import WaveVisualizer from './WaveVisualizer'
 import Knob from './Knob'
 import './Track.css'
 
-// Map track id to wave type
-const WAVE_TYPES = {
-  1: 'kick',
-  2: 'snare',
-  3: 'hihat',
-  4: 'openhat',
-}
+// Audio visualization: ver medidores en Master (MasterWaveMeter).
 
 // Pattern step editor
 const PatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) => {
@@ -147,13 +140,14 @@ const Track = ({
     >
       {/* Wave Visualizer Header */}
       <div className="track-header">
-        <WaveVisualizer
-          type={WAVE_TYPES[track.id]}
-          color={track.color}
-          isActive={isActive}
-          name={track.name}
+        <button
+          type="button"
+          className={`track-title-btn ${isActive ? 'active' : ''}`}
           onClick={() => onPlay(track.id)}
-        />
+          title="Trigger"
+        >
+          <span className="track-title">{track.name}</span>
+        </button>
         <div className="track-actions">
           <button 
             className={`action-btn mute-btn ${isMuted ? 'active' : ''}`}

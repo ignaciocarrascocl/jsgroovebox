@@ -1,4 +1,5 @@
 import Knob from './Knob'
+import MasterSoundVisualizer from './MasterSoundVisualizer'
 import './MasterFX.css'
 
 const MasterFX = ({
@@ -7,6 +8,7 @@ const MasterFX = ({
   busParams,
   onBusParamChange,
   meter,
+  masterNode,
 }) => {
   const handleMaster = (param, value) => {
     onMasterParamChange({ ...masterParams, [param]: value })
@@ -44,6 +46,13 @@ const MasterFX = ({
         </div>
   <div className="masterfx-sub">FX</div>
       </div>
+
+      <MasterSoundVisualizer
+        inputNode={masterNode}
+        height={80}
+        strokeColor="rgba(255,255,255,0.90)"
+        isActive={true}
+      />
 
       <div className="masterfx-grid">
         <div className="fx-strip">

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import HeaderRow from './components/HeaderRow'
 import LeftControls from './components/LeftControls'
 import MasterFX from './components/MasterFX'
-import MasterWaveMeter from './components/MasterWaveMeter'
 import Track from './components/Track'
 import BassTrack from './components/BassTrack'
 import ChordsTrack from './components/ChordsTrack'
@@ -57,8 +56,6 @@ const DEFAULT_CHORD_PARAMS = {
     lfoRate: 0,
     lfoDepth: 0,
     compression: 0.3,
-    fm: 0,
-    fmHarmonicity: 1,
     reverb: 0.2,
     delay: 0
   },
@@ -86,6 +83,8 @@ const DEFAULT_BUS_PARAMS = {
 }
 
 function App() {
+  const [showStartup, setShowStartup] = useState(true)
+  const [startupPhase, setStartupPhase] = useState('idle') // idle | leaving
   const [selectedPatterns, setSelectedPatterns] = useState(DEFAULT_PATTERNS)
   const [customPatterns, setCustomPatterns] = useState({})
   const [trackParams, setTrackParams] = useState(DEFAULT_TRACK_PARAMS)
@@ -111,10 +110,12 @@ function App() {
   pause,
     playTrack,
     masterMeter,
+  getMasterNode,
     setMasterParams: setEngineMasterParams,
     setBusParams: setEngineBusParams,
   perfStats,
   } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, songSettings)
+
 
   // Wire master/bus params into audio engine
   useEffect(() => {
@@ -195,12 +196,38 @@ function App() {
   // Check if any track is soloed
   const hasSolo = Object.values(soloTracks).some(v => v)
 
+  const handleEnterApp = async () => {
+    // El primer gesto del usuario debe iniciar el audio en la mayoría de navegadores.
+    try {
+      await startTone?.()
+    } finally {
+      setStartupPhase('leaving')
+      window.setTimeout(() => setShowStartup(false), 520)
+    }
+  }
+
   return (
-    <div className="app-container">
+  <div className={`app-container ${showStartup ? 'has-startup' : ''}`}>
+      {showStartup && (
+        <div className={`startup-screen ${startupPhase === 'leaving' ? 'is-leaving' : ''}`} role="dialog" aria-label="Pantalla de inicio">
+          <div className="startup-card">
+            <div className="startup-title">JS Groovebox</div>
+            <div className="startup-subtitle">Una caja de ritmos en el navegador.</div>
+            <div className="startup-hint">
+              Para evitar bloqueos de audio, tocá “Entrar” para habilitar el sonido.
+            </div>
+
+            <button className="startup-cta" onClick={handleEnterApp}>
+              Entrar
+            </button>
+
+            <div className="startup-footnote">Tip: usá audífonos o parlantes para una mejor experiencia.</div>
+          </div>
+        </div>
+      )}
+
       <div className="tracks-container">
-        {!toneStarted ? (
-          <button className="start-button" onClick={startTone}>Start Audio</button>
-        ) : (
+        {toneStarted ? (
           <>
             <HeaderRow isPlaying={isPlaying} onTogglePlay={togglePlay} onPause={pause} perf={perfStats} />
 
@@ -215,17 +242,13 @@ function App() {
               </div>
 
               <div className="controls-right">
-                <MasterWaveMeter
-                  waveform={masterMeter?.waveform}
-                  peakDb={masterMeter?.peakDb}
-                  rmsDb={masterMeter?.rmsDb}
-                />
                 <MasterFX
                   masterParams={masterParams}
                   onMasterParamChange={setMasterParams}
                   busParams={busParams}
                   onBusParamChange={setBusParams}
                   meter={masterMeter}
+                  masterNode={getMasterNode?.()}
                 />
               </div>
             </div>
@@ -295,6 +318,14 @@ function App() {
               )}
             </div>
           </>
+        ) : (
+          <div className={`audio-fallback ${showStartup ? 'is-hidden' : ''}`}>
+            <div className="audio-fallback-title">Audio bloqueado</div>
+            <div className="audio-fallback-text">
+              Tu navegador necesita un gesto para habilitar el sonido.
+            </div>
+            <button className="audio-fallback-button" onClick={startTone}>Habilitar audio</button>
+          </div>
         )}
       </div>
     </div>

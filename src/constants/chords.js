@@ -43,9 +43,9 @@ export const WAVE_TYPES = ['sine', 'triangle', 'sawtooth', 'square']
 
 // Chord sound presets - combinations of synth parameters
 export const CHORD_SOUND_PRESETS = [
-  // 1) Soft EP - mellow FM keys
+  // 1) Soft EP - mellow keys
   {
-    name: 'FM EP',
+    name: 'Soft EP',
     waveType: 'sine',
     filter: 3600,
     resonance: 1.1,
@@ -55,8 +55,6 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 0,
     lfoDepth: 0,
     compression: 0.2,
-    fm: 0.22,
-    fmHarmonicity: 2,
   },
 
   // 2) Glass bells - bright + chime
@@ -71,8 +69,6 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 0.12,
     lfoDepth: 60,
     compression: 0.18,
-    fm: 0.48,
-    fmHarmonicity: 2,
   },
 
   // 3) Metallic organ - hollow + stable
@@ -87,8 +83,6 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 5.2,
     lfoDepth: 120,
     compression: 0.15,
-    fm: 0.12,
-    fmHarmonicity: 3,
   },
 
   // 4) Plucky digital - percussive, modern
@@ -103,13 +97,11 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 0,
     lfoDepth: 0,
     compression: 0.24,
-    fm: 0.32,
-    fmHarmonicity: 1,
   },
 
-  // 5) Warm FM pad - smooth movement
+  // 5) Warm pad - smooth movement
   {
-    name: 'FM Pad',
+    name: 'Warm Pad',
     waveType: 'sawtooth',
     filter: 1700,
     resonance: 1.6,
@@ -119,13 +111,11 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 0.18,
     lfoDepth: 90,
     compression: 0.14,
-    fm: 0.14,
-    fmHarmonicity: 1,
   },
 
-  // 6) Brass hit - punchy FM bite
+  // 6) Brass hit - punchy bite
   {
-    name: 'FM Brass',
+    name: 'Brass Hit',
     waveType: 'sawtooth',
     filter: 3200,
     resonance: 3.2,
@@ -135,8 +125,6 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 0.7,
     lfoDepth: 80,
     compression: 0.28,
-    fm: 0.26,
-    fmHarmonicity: 1,
   },
 
   // 7) Detuned shimmer - wide + airy
@@ -151,8 +139,6 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 0.25,
     lfoDepth: 140,
     compression: 0.18,
-    fm: 0.1,
-    fmHarmonicity: 1,
   },
 
   // 8) Dark sync - gritty, lower partials
@@ -167,8 +153,6 @@ export const CHORD_SOUND_PRESETS = [
     lfoRate: 0.35,
     lfoDepth: 120,
     compression: 0.24,
-    fm: 0.3,
-    fmHarmonicity: 0.5,
   },
 ]
 

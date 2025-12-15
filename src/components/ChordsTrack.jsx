@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { CHORD_PATTERNS, WAVE_TYPES, CHORD_SOUND_PRESETS } from '../constants/chords'
-import WaveVisualizer from './WaveVisualizer'
 import Knob from './Knob'
 import './ChordsTrack.css'
 
@@ -160,8 +159,6 @@ const ChordsTrack = ({
       lfoRate: preset.lfoRate,
       lfoDepth: preset.lfoDepth,
       compression: preset.compression,
-      fm: preset.fm,
-      fmHarmonicity: preset.fmHarmonicity,
     })
   }
 
@@ -172,13 +169,15 @@ const ChordsTrack = ({
     >
       {/* Wave Visualizer Header */}
       <div className="chord-track-header">
-        <WaveVisualizer
-          type="chord"
-          color={track.color}
-          isActive={isActive}
-          name={track.name}
+        <button
+          type="button"
+          className={`track-title-btn ${isActive ? 'active' : ''}`}
           onClick={() => onPlay(track.id)}
-        />
+          title="Trigger"
+          style={{ '--track-color': track.color }}
+        >
+          <span className="track-title">{track.name}</span>
+        </button>
         <div className="chord-track-actions">
           <button 
             className={`action-btn mute-btn ${isMuted ? 'active' : ''}`}

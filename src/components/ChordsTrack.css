@@ -38,6 +38,11 @@
   gap: 8px;
 }
 
+/* Reuse Track.css button styles */
+.chord-track-header .track-title-btn {
+  flex: 1;
+}
+
 /* Track Actions (Mute/Solo) */
 .chord-track-actions {
   display: flex;

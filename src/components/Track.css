@@ -28,6 +28,34 @@
   gap: 8px;
 }
 
+/* Track title button (replaces per-track audio visualization) */
+.track-title-btn {
+  flex: 1;
+  height: 54px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.track-title-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.track-title-btn.active {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.track-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
 /* Track Actions (Mute/Solo) */
 .track-actions {
   display: flex;

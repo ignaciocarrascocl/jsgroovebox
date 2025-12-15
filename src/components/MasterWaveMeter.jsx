@@ -1,6 +1,14 @@
 import { useEffect, useRef } from 'react'
 import './MasterWaveMeter.css'
 
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
+
+const dbToPercent = (db) => {
+  // Map -60..0 dB => 0..100
+  const d = Number.isFinite(db) ? db : -Infinity
+  return clamp(((d + 60) / 60) * 100, 0, 100)
+}
+
 const MasterWaveMeter = ({ waveform, peakDb, rmsDb }) => {
   const canvasRef = useRef(null)
   const rafRef = useRef(null)
@@ -120,15 +128,50 @@ const MasterWaveMeter = ({ waveform, peakDb, rmsDb }) => {
     <div className="master-wave-meter">
       <div className="mwm-top">
         <div className="mwm-title">OUTPUT</div>
-        <div className="mwm-values">
-          <span className={`mwm-pill ${peakDb > -3 ? 'hot' : ''}`}>
-            P {Number.isFinite(peakDb) ? peakDb.toFixed(1) : '-'}
-          </span>
-          <span className="mwm-pill">
-            R {Number.isFinite(rmsDb) ? rmsDb.toFixed(1) : '-'}
-          </span>
+        <div className="mwm-readouts">
+          <div className={`mwm-readout ${peakDb > -0.2 ? 'hot' : ''}`}>
+            <div className="mwm-readout-label">Peak</div>
+            <div className="mwm-readout-value">{Number.isFinite(peakDb) ? `${peakDb.toFixed(1)} dB` : '—'}</div>
+          </div>
+          <div className="mwm-readout">
+            <div className="mwm-readout-label">RMS</div>
+            <div className="mwm-readout-value">{Number.isFinite(rmsDb) ? `${rmsDb.toFixed(1)} dB` : '—'}</div>
+          </div>
         </div>
       </div>
+
+      <div className="mwm-metrics">
+        <div className="mwm-metric">
+          <div className="mwm-metric-head">
+            <div className="mwm-metric-name">Peak</div>
+            <div className="mwm-metric-hint">Evitá clipping (bajo 0.0)</div>
+          </div>
+          <div className="mwm-bar" aria-label="Barra Peak">
+            <div className="mwm-bar-markers" aria-hidden="true">
+              {[-48, -24, -12, -6, -3, 0].map((db) => (
+                <div key={db} className={`mwm-bar-marker ${db === 0 ? 'zero' : ''}`} style={{ left: `${dbToPercent(db)}%` }} />
+              ))}
+            </div>
+            <div className="mwm-bar-fill mwm-bar-peak" style={{ width: `${dbToPercent(peakDb)}%` }} />
+          </div>
+        </div>
+
+        <div className="mwm-metric">
+          <div className="mwm-metric-head">
+            <div className="mwm-metric-name">RMS</div>
+            <div className="mwm-metric-hint">Densidad promedio</div>
+          </div>
+          <div className="mwm-bar" aria-label="Barra RMS">
+            <div className="mwm-bar-markers" aria-hidden="true">
+              {[-48, -24, -12, -6, -3, 0].map((db) => (
+                <div key={db} className={`mwm-bar-marker ${db === 0 ? 'zero' : ''}`} style={{ left: `${dbToPercent(db)}%` }} />
+              ))}
+            </div>
+            <div className="mwm-bar-fill mwm-bar-rms" style={{ width: `${dbToPercent(rmsDb)}%` }} />
+          </div>
+        </div>
+      </div>
+
       <canvas ref={canvasRef} className="mwm-canvas" />
     </div>
   )

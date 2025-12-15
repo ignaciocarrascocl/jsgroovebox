@@ -26,21 +26,79 @@
 
 .lc-bpm {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
+  grid-template-columns: 34px 1fr 34px;
+  gap: 8px;
   align-items: center;
 }
 
-.lc-bpm-value {
-  min-width: 44px;
-  text-align: center;
-  padding: 6px 10px;
+.lc-bpm-nudge {
+  height: 34px;
   border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.lc-bpm-nudge:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.lc-bpm-input-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.lc-bpm-input {
+  width: 76px;
+  text-align: right;
+  background: transparent;
+  border: none;
+  outline: none;
   color: #667eea;
   font-weight: 900;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
+}
+
+.lc-bpm-unit {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lc-bpm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lc-bpm-action {
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lc-bpm-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(102, 126, 234, 0.35);
 }
 
 .lc-slider {
@@ -48,36 +106,23 @@
   accent-color: #667eea;
 }
 
-.lc-prog {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.lc-prog-select-wrap {
+  width: 100%;
 }
 
-.lc-prog-btn {
-  padding: 8px 10px;
+.lc-prog-select {
+  width: 100%;
+  padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(0, 0, 0, 0.22);
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
   font-weight: 800;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  outline: none;
 }
 
-.lc-prog-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(138, 108, 179, 0.45);
-}
-
-.lc-prog-btn.active {
-  background: linear-gradient(145deg, #6a4c93, #5a3c83);
-  border-color: rgba(138, 108, 179, 0.75);
-  color: #fff;
-  box-shadow: 0 0 14px rgba(138, 108, 179, 0.22);
+.lc-prog-select:focus {
+  border-color: rgba(102, 126, 234, 0.35);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }

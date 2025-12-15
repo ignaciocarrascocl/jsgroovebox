@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { BASS_PATTERNS, WAVE_TYPES, BASS_SOUND_PRESETS } from '../constants/bass'
-import WaveVisualizer from './WaveVisualizer'
 import Knob from './Knob'
 import './BassTrack.css'
 
@@ -171,13 +170,15 @@ const BassTrack = ({
     >
       {/* Wave Visualizer Header */}
       <div className="bass-track-header">
-        <WaveVisualizer
-          type="bass"
-          color={track.color}
-          isActive={isActive}
-          name={track.name}
+        <button
+          type="button"
+          className={`track-title-btn ${isActive ? 'active' : ''}`}
           onClick={() => onPlay(track.id)}
-        />
+          title="Trigger"
+          style={{ '--track-color': track.color }}
+        >
+          <span className="track-title">{track.name}</span>
+        </button>
         <div className="bass-track-actions">
           <button 
             className={`action-btn mute-btn ${isMuted ? 'active' : ''}`}
