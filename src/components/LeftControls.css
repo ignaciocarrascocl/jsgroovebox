@@ -1,0 +1,83 @@
+.left-controls {
+  width: 100%;
+  background: rgba(20, 20, 35, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lc-label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lc-bpm {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.lc-bpm-value {
+  min-width: 44px;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #667eea;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.lc-slider {
+  width: 100%;
+  accent-color: #667eea;
+}
+
+.lc-prog {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lc-prog-btn {
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lc-prog-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(138, 108, 179, 0.45);
+}
+
+.lc-prog-btn.active {
+  background: linear-gradient(145deg, #6a4c93, #5a3c83);
+  border-color: rgba(138, 108, 179, 0.75);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(138, 108, 179, 0.22);
+}

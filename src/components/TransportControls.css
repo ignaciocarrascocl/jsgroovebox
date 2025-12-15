@@ -1,14 +1,35 @@
 .transport-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   background: rgba(20, 20, 35, 0.95);
-  padding: 10px 20px;
+  padding: 10px 14px;
   border-radius: 12px 0 0 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-right: none;
   backdrop-filter: blur(10px);
+}
+
+.transport-left {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.transport-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.transport-right {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 220px;
 }
 
 /* Logo */
@@ -156,6 +177,15 @@
   padding: 4px 8px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
+}
+
+@media (max-width: 720px) {
+  .transport-right {
+    min-width: 160px;
+  }
+  .step {
+    width: 7px;
+  }
 }
 
 .step {

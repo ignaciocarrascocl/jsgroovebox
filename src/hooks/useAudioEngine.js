@@ -7,6 +7,11 @@ import { CHORD_PROGRESSIONS } from '../constants/song'
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
+const dbFromRms = (rms) => {
+  const v = Math.max(1e-8, rms ?? 0)
+  return 20 * Math.log10(v)
+}
+
 const applyCompressionAmount = (compressor, amount01) => {
   if (!compressor) return
 
@@ -156,12 +161,39 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const [currentChordStep, setCurrentChordStep] = useState(0) // 0-63 for full 4-bar progression
   const [bpm, setBpm] = useState(120)
   const [activeTracks, setActiveTracks] = useState({})
+  const [masterMeter, setMasterMeter] = useState({ waveform: [], peakDb: -Infinity, rmsDb: -Infinity })
+  const [perfStats, setPerfStats] = useState({ fps: undefined, usedJSHeapSizeMb: undefined })
   
   const synthsRef = useRef({})
   const effectsRef = useRef({})
+  const mixerRef = useRef({})
   const sequencerRef = useRef(null)
   const bassStepRef = useRef(0) // Track 64-step bass progression
   const chordStepRef = useRef(0) // Track 64-step chord progression
+
+  // Lightweight performance stats (FPS + JS heap when available)
+  useEffect(() => {
+    let raf = 0
+    let frames = 0
+    let lastEmit = performance.now()
+
+    const loop = (t) => {
+      frames += 1
+      if (t - lastEmit > 500) {
+        const fps = frames / ((t - lastEmit) / 1000)
+        frames = 0
+        lastEmit = t
+
+        const mem = performance?.memory
+        const usedJSHeapSizeMb = mem?.usedJSHeapSize ? mem.usedJSHeapSize / (1024 * 1024) : undefined
+        setPerfStats({ fps, usedJSHeapSizeMb })
+      }
+      raf = requestAnimationFrame(loop)
+    }
+
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [])
   
   // Use refs to store current values without triggering re-renders
   const selectedPatternsRef = useRef(selectedPatterns)
@@ -172,6 +204,24 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const bassParamsRef = useRef(bassParams)
   const chordParamsRef = useRef(chordParams)
   const songSettingsRef = useRef(songSettings)
+
+  // Master + bus params (controlled from App, stored in refs here)
+  // Note: master params include some UI-only fields (e.g. pan/outGain/filterDrive) that are applied only if the node exists.
+  const masterParamsRef = useRef({
+    compression: 0,
+    compMakeup: 0,
+    compMix: 1,
+    eqLow: 0,
+    eqMid: 0,
+    eqHigh: 0,
+    filterCutoff: 20000,
+    filterReso: 0.7,
+    filterDrive: 0,
+    volume: 0,
+    outGain: 0,
+    pan: 0,
+  })
+  const busParamsRef = useRef({ reverb: { wet: 0.2, decay: 1.8, preDelay: 0.01 }, delay: { wet: 0.15, feedback: 0.25, time: 0.25 } })
 
   // Keep refs in sync with props
   useEffect(() => {
@@ -206,6 +256,14 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     songSettingsRef.current = songSettings
   }, [songSettings])
 
+  const setMasterParams = useCallback((params) => {
+    masterParamsRef.current = params
+  }, [])
+
+  const setBusParams = useCallback((params) => {
+    busParamsRef.current = params
+  }, [])
+
   // Helper function to check if a track should play
   const shouldTrackPlay = (trackId) => {
     const hasSolo = Object.values(soloTracksRef.current).some(v => v)
@@ -219,59 +277,121 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   useEffect(() => {
     if (!toneStarted) return
 
+    // Master / buses / meters
+    const masterInput = new Tone.Gain(1)
+    const masterCompressor = new Tone.Compressor(-24, 2)
+    const masterEQ = new Tone.EQ3({ low: 0, mid: 0, high: 0 })
+    const masterFilter = new Tone.Filter(20000, 'lowpass')
+    masterFilter.Q.value = 0.7
+  // Parallel comp mix: dry + wet summed into masterGain
+  const masterDry = new Tone.Gain(1)
+  const masterWet = new Tone.Gain(0)
+  const masterMakeup = new Tone.Gain(1)
+
+  const masterGain = new Tone.Gain(1)
+
+    // Shared FX buses (send/return)
+    const reverb = new Tone.Reverb({ decay: 1.8, wet: 1 })
+    const reverbReturn = new Tone.Gain(1)
+    const delay = new Tone.FeedbackDelay(0.25, 0.25)
+    delay.wet.value = 1
+    const delayReturn = new Tone.Gain(1)
+
+    // Analyzer + meter
+    const waveformAnalyser = new Tone.Waveform(256)
+    const meter = new Tone.Meter({ channels: 1, normalRange: false })
+
+  // Routing:
+  // masterInput -> dry -> masterGain
+  // masterInput -> compressor -> makeup -> wet -> masterGain
+  // masterGain -> meter -> destination
+  masterInput.fan(masterDry, masterCompressor)
+  masterCompressor.chain(masterMakeup, masterWet)
+  masterDry.chain(masterEQ, masterFilter, masterGain)
+  masterWet.chain(masterEQ, masterFilter, masterGain)
+  masterGain.chain(meter, Tone.Destination)
+    masterGain.connect(waveformAnalyser)
+
+    // Returns feed into master input (post-track FX)
+    reverb.chain(reverbReturn, masterInput)
+    delay.chain(delayReturn, masterInput)
+
+    mixerRef.current = {
+      masterInput,
+      masterCompressor,
+  masterDry,
+  masterWet,
+  masterMakeup,
+      masterEQ,
+      masterFilter,
+      masterGain,
+      reverb,
+      reverbReturn,
+      delay,
+      delayReturn,
+      waveformAnalyser,
+      meter,
+    }
+
     // Create effects for each track
     effectsRef.current = {
       kick: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(1000, 'lowpass'),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 1, wet: 0 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
       snare: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(5000, 'lowpass'),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 1, wet: 0.1 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
       hihat: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(8000, 'highpass'),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 0.5, wet: 0 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
       openHH: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(8000, 'highpass'),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 1, wet: 0.2 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
       tom: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(1200, 'lowpass'),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 1, wet: 0.1 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
       clap: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(4000, 'bandpass'),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 1.2, wet: 0.2 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
       bass: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(800, 'lowpass'),
         lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 1.5, wet: 0.1 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
       chords: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(2500, 'lowpass'),
         lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
-        delay: new Tone.FeedbackDelay(0.25, 0),
-        reverb: new Tone.Reverb({ decay: 2, wet: 0.2 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
       },
     }
+
+    // Wire track sends to shared buses
+    Object.values(effectsRef.current).forEach((fx) => {
+      fx?.delaySend?.connect(mixerRef.current.delay)
+      fx?.reverbSend?.connect(mixerRef.current.reverb)
+    })
 
       // Kick
       synthsRef.current.kick = new Tone.MembraneSynth({
@@ -279,25 +399,27 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         octaves: 6,
         oscillator: { type: 'sine' },
         envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
-      }).chain(
+      })
+      synthsRef.current.kick.chain(
         effectsRef.current.kick.compressor,
         effectsRef.current.kick.filter,
-        effectsRef.current.kick.delay,
-        effectsRef.current.kick.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.kick.connect(effectsRef.current.kick.delaySend)
+      synthsRef.current.kick.connect(effectsRef.current.kick.reverbSend)
 
       // Snare
       synthsRef.current.snare = new Tone.NoiseSynth({
         noise: { type: 'white' },
         envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 }
-      }).chain(
+      })
+      synthsRef.current.snare.chain(
         effectsRef.current.snare.compressor,
         effectsRef.current.snare.filter,
-        effectsRef.current.snare.delay,
-        effectsRef.current.snare.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.snare.connect(effectsRef.current.snare.delaySend)
+      synthsRef.current.snare.connect(effectsRef.current.snare.reverbSend)
 
       // HiHat
       synthsRef.current.hihat = new Tone.MetalSynth({
@@ -307,13 +429,14 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         modulationIndex: 32,
         resonance: 4000,
         octaves: 1.5
-      }).chain(
+      })
+      synthsRef.current.hihat.chain(
         effectsRef.current.hihat.compressor,
         effectsRef.current.hihat.filter,
-        effectsRef.current.hihat.delay,
-        effectsRef.current.hihat.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.hihat.connect(effectsRef.current.hihat.delaySend)
+      synthsRef.current.hihat.connect(effectsRef.current.hihat.reverbSend)
       synthsRef.current.hihat.volume.value = -10
 
       // Open HiHat
@@ -324,13 +447,14 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         modulationIndex: 32,
         resonance: 4000,
         octaves: 1.5
-      }).chain(
+      })
+      synthsRef.current.openHH.chain(
         effectsRef.current.openHH.compressor,
         effectsRef.current.openHH.filter,
-        effectsRef.current.openHH.delay,
-        effectsRef.current.openHH.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.openHH.connect(effectsRef.current.openHH.delaySend)
+      synthsRef.current.openHH.connect(effectsRef.current.openHH.reverbSend)
       synthsRef.current.openHH.volume.value = -10
 
       // Tom
@@ -339,26 +463,28 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         octaves: 4,
         oscillator: { type: 'sine' },
         envelope: { attack: 0.001, decay: 0.3, sustain: 0.1, release: 0.5 }
-      }).chain(
+      })
+      synthsRef.current.tom.chain(
         effectsRef.current.tom.compressor,
         effectsRef.current.tom.filter,
-        effectsRef.current.tom.delay,
-        effectsRef.current.tom.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.tom.connect(effectsRef.current.tom.delaySend)
+      synthsRef.current.tom.connect(effectsRef.current.tom.reverbSend)
       synthsRef.current.tom.volume.value = -5
 
       // Clap
       synthsRef.current.clap = new Tone.NoiseSynth({
         noise: { type: 'white' },
         envelope: { attack: 0.003, decay: 0.15, sustain: 0, release: 0.15 }
-      }).chain(
+      })
+      synthsRef.current.clap.chain(
         effectsRef.current.clap.compressor,
         effectsRef.current.clap.filter,
-        effectsRef.current.clap.delay,
-        effectsRef.current.clap.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.clap.connect(effectsRef.current.clap.delaySend)
+      synthsRef.current.clap.connect(effectsRef.current.clap.reverbSend)
       synthsRef.current.clap.volume.value = -6
 
       // Bass Synth
@@ -367,17 +493,18 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       effectsRef.current.bass.lfo.connect(effectsRef.current.bass.filter.frequency)
       effectsRef.current.bass.lfo.start()
       
-      synthsRef.current.bass = new Tone.MonoSynth({
+  synthsRef.current.bass = new Tone.MonoSynth({
         oscillator: { type: 'sawtooth' },
         envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.1 },
         filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.2, baseFrequency: 200, octaves: 2 }
-      }).chain(
+      })
+      synthsRef.current.bass.chain(
         effectsRef.current.bass.compressor,
         effectsRef.current.bass.filter,
-        effectsRef.current.bass.delay,
-        effectsRef.current.bass.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.bass.connect(effectsRef.current.bass.delaySend)
+      synthsRef.current.bass.connect(effectsRef.current.bass.reverbSend)
       synthsRef.current.bass.volume.value = -6
 
       // Chord Synth - PolySynth for playing multiple notes
@@ -386,25 +513,27 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       effectsRef.current.chords.lfo.connect(effectsRef.current.chords.filter.frequency)
       effectsRef.current.chords.lfo.start()
       
-      synthsRef.current.chords = new Tone.PolySynth(Tone.FMSynth, {
+  synthsRef.current.chords = new Tone.PolySynth(Tone.FMSynth, {
         harmonicity: 1,
         modulationIndex: 0,
         oscillator: { type: 'sawtooth' },
         modulation: { type: 'sine' },
         envelope: { attack: 0.05, decay: 0.4, sustain: 0.2, release: 0.3 },
         modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 },
-      }).chain(
+      })
+      synthsRef.current.chords.chain(
         effectsRef.current.chords.compressor,
         effectsRef.current.chords.filter,
-        effectsRef.current.chords.delay,
-        effectsRef.current.chords.reverb,
-        Tone.Destination
+        mixerRef.current.masterInput
       )
+      synthsRef.current.chords.connect(effectsRef.current.chords.delaySend)
+      synthsRef.current.chords.connect(effectsRef.current.chords.reverbSend)
       synthsRef.current.chords.volume.value = -10
 
     // Capture refs for cleanup
     const synths = synthsRef.current
     const effects = effectsRef.current
+    const mixer = mixerRef.current
 
     return () => {
       Object.values(synths).forEach(synth => synth?.dispose())
@@ -412,10 +541,108 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         fx?.compressor?.dispose()
         fx?.filter?.dispose()
         fx?.lfo?.dispose()
-        fx?.delay?.dispose()
-        fx?.reverb?.dispose()
+        fx?.delaySend?.dispose()
+        fx?.reverbSend?.dispose()
       })
+
+      mixer?.reverb?.dispose()
+      mixer?.reverbReturn?.dispose()
+      mixer?.delay?.dispose()
+      mixer?.delayReturn?.dispose()
+      mixer?.masterCompressor?.dispose()
+      mixer?.masterEQ?.dispose()
+      mixer?.masterFilter?.dispose()
+      mixer?.masterGain?.dispose()
+      mixer?.masterInput?.dispose()
+      mixer?.waveformAnalyser?.dispose()
+      mixer?.meter?.dispose()
     }
+  }, [toneStarted])
+
+  // Update master + bus params
+  useEffect(() => {
+    if (!toneStarted) return
+    const params = masterParamsRef.current
+    const mixer = mixerRef.current
+    if (!mixer?.masterCompressor) return
+
+    applyCompressionAmount(mixer.masterCompressor, params.compression)
+
+    // Parallel mix + makeup
+    if (mixer.masterDry && mixer.masterWet) {
+      const mix = clamp(params.compMix ?? 1, 0, 1)
+      // constant power-ish crossfade
+      const dry = Math.cos((mix * Math.PI) / 2)
+      const wet = Math.sin((mix * Math.PI) / 2)
+      mixer.masterDry.gain.rampTo(dry, 0.05)
+      mixer.masterWet.gain.rampTo(wet, 0.05)
+    }
+    if (mixer.masterMakeup) {
+      const makeupDb = clamp(params.compMakeup ?? 0, -24, 24)
+      mixer.masterMakeup.gain.rampTo(Tone.dbToGain(makeupDb), 0.05)
+    }
+
+    if (mixer.masterEQ) {
+      mixer.masterEQ.low.rampTo(clamp(params.eqLow ?? 0, -12, 12), 0.1)
+      mixer.masterEQ.mid.rampTo(clamp(params.eqMid ?? 0, -12, 12), 0.1)
+      mixer.masterEQ.high.rampTo(clamp(params.eqHigh ?? 0, -12, 12), 0.1)
+    }
+
+    if (mixer.masterFilter) {
+      mixer.masterFilter.frequency.rampTo(clamp(params.filterCutoff ?? 20000, 20, 20000), 0.1)
+      mixer.masterFilter.Q.rampTo(clamp(params.filterReso ?? 0.7, 0.1, 20), 0.1)
+    }
+
+    if (mixer.masterGain) {
+  const db = clamp((params.volume ?? 0) + (params.outGain ?? 0), -60, 18)
+      mixer.masterGain.gain.rampTo(Tone.dbToGain(db), 0.1)
+    }
+  })
+
+  useEffect(() => {
+    if (!toneStarted) return
+    const params = busParamsRef.current
+    const mixer = mixerRef.current
+    if (!mixer?.reverb || !mixer?.delay) return
+
+    mixer.reverb.decay = clamp(params?.reverb?.decay ?? 1.8, 0.2, 12)
+    if (mixer.reverb.preDelay !== undefined) {
+      mixer.reverb.preDelay = clamp(params?.reverb?.preDelay ?? 0.01, 0, 1)
+    }
+    mixer.reverbReturn.gain.rampTo(clamp(params?.reverb?.wet ?? 0.2, 0, 1), 0.1)
+
+    mixer.delay.delayTime.rampTo(clamp(params?.delay?.time ?? 0.25, 0.01, 2), 0.1)
+    mixer.delay.feedback.rampTo(clamp(params?.delay?.feedback ?? 0.25, 0, 0.95), 0.1)
+    mixer.delayReturn.gain.rampTo(clamp(params?.delay?.wet ?? 0.15, 0, 1), 0.1)
+  })
+
+  // Meter + waveform polling
+  useEffect(() => {
+    if (!toneStarted) return
+    let raf = 0
+
+    const tick = () => {
+      const mixer = mixerRef.current
+      const wf = mixer?.waveformAnalyser?.getValue?.() || []
+      const val = mixer?.meter?.getValue?.() ?? 0
+      const peak = Math.max(1e-8, Math.abs(val))
+      // Meter may be peak-like. We'll approximate RMS from waveform.
+      let rms = 0
+      if (wf?.length) {
+        let s = 0
+        for (let i = 0; i < wf.length; i++) s += wf[i] * wf[i]
+        rms = Math.sqrt(s / wf.length)
+      }
+      setMasterMeter({
+        waveform: Array.isArray(wf) ? wf : Array.from(wf),
+        peakDb: dbFromRms(peak),
+        rmsDb: dbFromRms(rms),
+      })
+      raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
   }, [toneStarted])
 
   // Update track parameters in real-time (without recreating synths)
@@ -432,11 +659,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       effectsRef.current.kick.filter.frequency.linearRampTo(trackParams[1]?.filter || 800, 0.1)
     }
     if (effectsRef.current.kick?.delay) {
-      effectsRef.current.kick.delay.wet.linearRampTo(trackParams[1]?.delay || 0, 0.1)
+      // (deprecated)
     }
-    if (effectsRef.current.kick?.reverb) {
-      effectsRef.current.kick.reverb.wet.linearRampTo(trackParams[1]?.reverb || 0, 0.1)
-    }
+    if (effectsRef.current.kick?.delaySend) effectsRef.current.kick.delaySend.gain.rampTo(clamp(trackParams[1]?.delay || 0, 0, 1), 0.1)
+    if (effectsRef.current.kick?.reverbSend) effectsRef.current.kick.reverbSend.gain.rampTo(clamp(trackParams[1]?.reverb || 0, 0, 1), 0.1)
 
     // Update snare
     if (synthsRef.current.snare) {
@@ -449,12 +675,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       const mult = pitchToMultiplier(trackParams[2]?.pitch || 0)
       effectsRef.current.snare.filter.frequency.linearRampTo(clamp(base * mult, 20, 20000), 0.1)
     }
-    if (effectsRef.current.snare?.delay) {
-      effectsRef.current.snare.delay.wet.linearRampTo(trackParams[2]?.delay || 0, 0.1)
-    }
-    if (effectsRef.current.snare?.reverb) {
-      effectsRef.current.snare.reverb.wet.linearRampTo(trackParams[2]?.reverb || 0.15, 0.1)
-    }
+  if (effectsRef.current.snare?.delaySend) effectsRef.current.snare.delaySend.gain.rampTo(clamp(trackParams[2]?.delay || 0, 0, 1), 0.1)
+  if (effectsRef.current.snare?.reverbSend) effectsRef.current.snare.reverbSend.gain.rampTo(clamp(trackParams[2]?.reverb || 0.15, 0, 1), 0.1)
 
     // Update hihat
     if (synthsRef.current.hihat) {
@@ -465,12 +687,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     if (effectsRef.current.hihat?.filter) {
       effectsRef.current.hihat.filter.frequency.linearRampTo(trackParams[3]?.filter || 6000, 0.1)
     }
-    if (effectsRef.current.hihat?.delay) {
-      effectsRef.current.hihat.delay.wet.linearRampTo(trackParams[3]?.delay || 0, 0.1)
-    }
-    if (effectsRef.current.hihat?.reverb) {
-      effectsRef.current.hihat.reverb.wet.linearRampTo(trackParams[3]?.reverb || 0, 0.1)
-    }
+  if (effectsRef.current.hihat?.delaySend) effectsRef.current.hihat.delaySend.gain.rampTo(clamp(trackParams[3]?.delay || 0, 0, 1), 0.1)
+  if (effectsRef.current.hihat?.reverbSend) effectsRef.current.hihat.reverbSend.gain.rampTo(clamp(trackParams[3]?.reverb || 0, 0, 1), 0.1)
 
     // Update openHH
     if (synthsRef.current.openHH) {
@@ -481,12 +699,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     if (effectsRef.current.openHH?.filter) {
       effectsRef.current.openHH.filter.frequency.linearRampTo(trackParams[4]?.filter || 5000, 0.1)
     }
-    if (effectsRef.current.openHH?.delay) {
-      effectsRef.current.openHH.delay.wet.linearRampTo(trackParams[4]?.delay || 0, 0.1)
-    }
-    if (effectsRef.current.openHH?.reverb) {
-      effectsRef.current.openHH.reverb.wet.linearRampTo(trackParams[4]?.reverb || 0.1, 0.1)
-    }
+  if (effectsRef.current.openHH?.delaySend) effectsRef.current.openHH.delaySend.gain.rampTo(clamp(trackParams[4]?.delay || 0, 0, 1), 0.1)
+  if (effectsRef.current.openHH?.reverbSend) effectsRef.current.openHH.reverbSend.gain.rampTo(clamp(trackParams[4]?.reverb || 0.1, 0, 1), 0.1)
 
     // Update tom
     if (synthsRef.current.tom) {
@@ -497,12 +711,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     if (effectsRef.current.tom?.filter) {
       effectsRef.current.tom.filter.frequency.linearRampTo(trackParams[5]?.filter || 1200, 0.1)
     }
-    if (effectsRef.current.tom?.delay) {
-      effectsRef.current.tom.delay.wet.linearRampTo(trackParams[5]?.delay || 0, 0.1)
-    }
-    if (effectsRef.current.tom?.reverb) {
-      effectsRef.current.tom.reverb.wet.linearRampTo(trackParams[5]?.reverb || 0.1, 0.1)
-    }
+  if (effectsRef.current.tom?.delaySend) effectsRef.current.tom.delaySend.gain.rampTo(clamp(trackParams[5]?.delay || 0, 0, 1), 0.1)
+  if (effectsRef.current.tom?.reverbSend) effectsRef.current.tom.reverbSend.gain.rampTo(clamp(trackParams[5]?.reverb || 0.1, 0, 1), 0.1)
 
     // Update clap
     if (synthsRef.current.clap) {
@@ -515,12 +725,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       const mult = pitchToMultiplier(trackParams[9]?.pitch || 0)
       effectsRef.current.clap.filter.frequency.linearRampTo(clamp(base * mult, 20, 20000), 0.1)
     }
-    if (effectsRef.current.clap?.delay) {
-      effectsRef.current.clap.delay.wet.linearRampTo(trackParams[9]?.delay || 0, 0.1)
-    }
-    if (effectsRef.current.clap?.reverb) {
-      effectsRef.current.clap.reverb.wet.linearRampTo(trackParams[9]?.reverb || 0.2, 0.1)
-    }
+  if (effectsRef.current.clap?.delaySend) effectsRef.current.clap.delaySend.gain.rampTo(clamp(trackParams[9]?.delay || 0, 0, 1), 0.1)
+  if (effectsRef.current.clap?.reverbSend) effectsRef.current.clap.reverbSend.gain.rampTo(clamp(trackParams[9]?.reverb || 0.2, 0, 1), 0.1)
   }, [trackParams, toneStarted])
 
   // Update bass parameters in real-time
@@ -559,12 +765,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       effectsRef.current.bass.lfo.max = Math.min(20000, filterFreq + lfoDepth)
     }
     applyCompressionAmount(effectsRef.current.bass?.compressor, bassParams[6]?.compression)
-    if (effectsRef.current.bass?.delay) {
-      effectsRef.current.bass.delay.wet.linearRampTo(bassParams[6]?.delay || 0, 0.1)
-    }
-    if (effectsRef.current.bass?.reverb) {
-      effectsRef.current.bass.reverb.wet.linearRampTo(bassParams[6]?.reverb || 0, 0.1)
-    }
+  if (effectsRef.current.bass?.delaySend) effectsRef.current.bass.delaySend.gain.rampTo(clamp(bassParams[6]?.delay || 0, 0, 1), 0.1)
+  if (effectsRef.current.bass?.reverbSend) effectsRef.current.bass.reverbSend.gain.rampTo(clamp(bassParams[6]?.reverb || 0, 0, 1), 0.1)
   }, [bassParams, toneStarted])
 
   // Update chord parameters in real-time
@@ -609,12 +811,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       effectsRef.current.chords.lfo.max = Math.min(20000, filterFreq + lfoDepth)
     }
     applyCompressionAmount(effectsRef.current.chords?.compressor, chordParams[7]?.compression)
-    if (effectsRef.current.chords?.delay) {
-      effectsRef.current.chords.delay.wet.linearRampTo(chordParams[7]?.delay || 0, 0.1)
-    }
-    if (effectsRef.current.chords?.reverb) {
-      effectsRef.current.chords.reverb.wet.linearRampTo(chordParams[7]?.reverb || 0.2, 0.1)
-    }
+  if (effectsRef.current.chords?.delaySend) effectsRef.current.chords.delaySend.gain.rampTo(clamp(chordParams[7]?.delay || 0, 0, 1), 0.1)
+  if (effectsRef.current.chords?.reverbSend) effectsRef.current.chords.reverbSend.gain.rampTo(clamp(chordParams[7]?.reverb || 0.2, 0, 1), 0.1)
   }, [chordParams, toneStarted])
 
   // Update BPM
@@ -819,6 +1017,14 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
   }, [isPlaying])
 
+  const pause = useCallback(() => {
+    if (!toneStarted) return
+    if (!isPlaying) return
+    Tone.getTransport().pause()
+    sequencerRef.current?.stop()
+    setIsPlaying(false)
+  }, [isPlaying, toneStarted])
+
   const playTrack = useCallback((trackId) => {
     if (!toneStarted) return
     
@@ -895,6 +1101,11 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     activeTracks,
     startTone,
     togglePlay,
+  pause,
     playTrack,
+  masterMeter,
+  setMasterParams,
+  setBusParams,
+  perfStats,
   }
 }

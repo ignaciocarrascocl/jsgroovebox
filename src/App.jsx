@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import TransportControls from './components/TransportControls'
-import SongSettings from './components/SongSettings'
+import { useEffect, useState } from 'react'
+import HeaderRow from './components/HeaderRow'
+import LeftControls from './components/LeftControls'
+import MasterFX from './components/MasterFX'
+import MasterWaveMeter from './components/MasterWaveMeter'
 import Track from './components/Track'
 import BassTrack from './components/BassTrack'
 import ChordsTrack from './components/ChordsTrack'
@@ -68,6 +70,21 @@ const DEFAULT_SONG_SETTINGS = {
   progression: 0,
 }
 
+const DEFAULT_MASTER_PARAMS = {
+  compression: 0,
+  eqLow: 0,
+  eqMid: 0,
+  eqHigh: 0,
+  filterCutoff: 20000,
+  filterReso: 0.7,
+  volume: 0,
+}
+
+const DEFAULT_BUS_PARAMS = {
+  reverb: { wet: 0.2, decay: 1.8 },
+  delay: { wet: 0.15, feedback: 0.25, time: 0.25 },
+}
+
 function App() {
   const [selectedPatterns, setSelectedPatterns] = useState(DEFAULT_PATTERNS)
   const [customPatterns, setCustomPatterns] = useState({})
@@ -77,6 +94,8 @@ function App() {
   const [songSettings, setSongSettings] = useState(DEFAULT_SONG_SETTINGS)
   const [mutedTracks, setMutedTracks] = useState({})
   const [soloTracks, setSoloTracks] = useState({})
+  const [masterParams, setMasterParams] = useState(DEFAULT_MASTER_PARAMS)
+  const [busParams, setBusParams] = useState(DEFAULT_BUS_PARAMS)
   
   const {
     toneStarted,
@@ -89,8 +108,22 @@ function App() {
     activeTracks,
     startTone,
     togglePlay,
+  pause,
     playTrack,
+    masterMeter,
+    setMasterParams: setEngineMasterParams,
+    setBusParams: setEngineBusParams,
+  perfStats,
   } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, songSettings)
+
+  // Wire master/bus params into audio engine
+  useEffect(() => {
+    setEngineMasterParams?.(masterParams)
+  }, [masterParams, setEngineMasterParams])
+
+  useEffect(() => {
+    setEngineBusParams?.(busParams)
+  }, [busParams, setEngineBusParams])
 
   const handlePatternChange = (trackId, patternIndex) => {
     setSelectedPatterns(prev => ({
@@ -146,16 +179,9 @@ function App() {
     }))
   }
 
-  const handleKeyChange = (key) => {
-    setSongSettings(prev => ({ ...prev, key }))
-  }
-
   const handleProgressionChange = (progression) => {
     setSongSettings(prev => ({ ...prev, progression }))
   }
-
-  // Calculate current bar (0-3) from bass step
-  const currentBar = Math.floor(currentBassStep / 16)
 
   // Show first 6 tracks (kick, snare, hihat, openHH, tom, clap)
   const visibleTracks = TRACKS.slice(0, 6)
@@ -176,22 +202,32 @@ function App() {
           <button className="start-button" onClick={startTone}>Start Audio</button>
         ) : (
           <>
+            <HeaderRow isPlaying={isPlaying} onTogglePlay={togglePlay} onPause={pause} perf={perfStats} />
+
             <div className="controls-row">
-              <TransportControls
-                isPlaying={isPlaying}
-                currentStep={currentStep}
-                bpm={bpm}
-                onTogglePlay={togglePlay}
-                onBpmChange={setBpm}
-              />
-              <SongSettings
-                songKey={songSettings.key}
-                progression={songSettings.progression}
-                onKeyChange={handleKeyChange}
-                onProgressionChange={handleProgressionChange}
-                currentBar={currentBar}
-                isPlaying={isPlaying}
-              />
+              <div className="controls-left">
+                <LeftControls
+                  bpm={bpm}
+                  onBpmChange={setBpm}
+                  progression={songSettings.progression}
+                  onProgressionChange={handleProgressionChange}
+                />
+              </div>
+
+              <div className="controls-right">
+                <MasterWaveMeter
+                  waveform={masterMeter?.waveform}
+                  peakDb={masterMeter?.peakDb}
+                  rmsDb={masterMeter?.rmsDb}
+                />
+                <MasterFX
+                  masterParams={masterParams}
+                  onMasterParamChange={setMasterParams}
+                  busParams={busParams}
+                  onBusParamChange={setBusParams}
+                  meter={masterMeter}
+                />
+              </div>
             </div>
             <div className="tracks-grid">
               {visibleTracks.map((track) => (
