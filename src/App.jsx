@@ -99,15 +99,15 @@ function App() {
   const {
     toneStarted,
     isPlaying,
-    currentStep,
-    currentBassStep,
-    currentChordStep,
+    uiStepPulse,
+    getCurrentStep,
+    getCurrentBassStep,
+    getCurrentChordStep,
     bpm,
     setBpm,
     activeTracks,
     startTone,
     togglePlay,
-  pause,
     playTrack,
     masterMeter,
   getMasterNode,
@@ -115,6 +115,10 @@ function App() {
     setBusParams: setEngineBusParams,
   perfStats,
   } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, songSettings)
+
+  // Drive step-based UI off a low-rate pulse to keep controls responsive while playing.
+  // (Read the latest step values via the getters.)
+  void uiStepPulse
 
 
   // Wire master/bus params into audio engine
@@ -229,7 +233,7 @@ function App() {
       <div className="tracks-container">
         {toneStarted ? (
           <>
-            <HeaderRow isPlaying={isPlaying} onTogglePlay={togglePlay} onPause={pause} perf={perfStats} />
+            <HeaderRow isPlaying={isPlaying} onTogglePlay={togglePlay} perf={perfStats} />
 
             <div className="controls-row">
               <div className="controls-left">
@@ -261,7 +265,7 @@ function App() {
                   selectedPattern={selectedPatterns[track.id]}
                   customPattern={customPatterns[track.id]}
                   trackParams={trackParams[track.id]}
-                  currentStep={currentStep}
+                  currentStep={getCurrentStep?.() ?? 0}
                   isPlaying={isPlaying}
                   isMuted={mutedTracks[track.id] || false}
                   isSoloed={soloTracks[track.id] || false}
@@ -282,7 +286,7 @@ function App() {
                   selectedPattern={selectedPatterns[6] ?? 0}
                   customPattern={customPatterns[6]}
                   bassParams={bassParams[6]}
-                  currentStep={currentBassStep}
+                  currentStep={getCurrentBassStep?.() ?? 0}
                   isPlaying={isPlaying}
                   isMuted={mutedTracks[6] || false}
                   isSoloed={soloTracks[6] || false}
@@ -303,7 +307,7 @@ function App() {
                   selectedPattern={selectedPatterns[7] ?? 0}
                   customPattern={customPatterns[7]}
                   chordParams={chordParams[7]}
-                  currentStep={currentChordStep}
+                  currentStep={getCurrentChordStep?.() ?? 0}
                   isPlaying={isPlaying}
                   isMuted={mutedTracks[7] || false}
                   isSoloed={soloTracks[7] || false}

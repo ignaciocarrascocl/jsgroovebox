@@ -1,7 +1,6 @@
 import './HeaderRow.css'
 
-const HeaderRow = ({ isPlaying, onTogglePlay, onPause, perf }) => {
-  const canPause = typeof onPause === 'function'
+const HeaderRow = ({ isPlaying, onTogglePlay, perf }) => {
   const usedMb = perf?.usedJSHeapSizeMb
   const fps = perf?.fps
 
@@ -18,27 +17,22 @@ const HeaderRow = ({ isPlaying, onTogglePlay, onPause, perf }) => {
       </div>
 
       <div className="header-center">
-        <button className={`header-transport-btn ${isPlaying ? 'playing' : ''}`} onClick={onTogglePlay} title={isPlaying ? 'Stop' : 'Play'}>
-          <span className="btn-icon">{isPlaying ? '■' : '▶'}</span>
-        </button>
-
         <button
-          className="header-transport-btn pause"
-          onClick={onPause}
-          title="Pause"
-          disabled={!canPause}
+          className={`header-transport-btn ${isPlaying ? 'playing' : ''}`}
+          onClick={onTogglePlay}
+          title={isPlaying ? 'Stop' : 'Play'}
         >
-          <span className="btn-icon">⏸</span>
+          <span className="btn-icon">{isPlaying ? '■' : '▶'}</span>
         </button>
 
         <div className="header-stats" aria-label="Performance">
           <div className="stat">
             <span className="stat-label">FPS</span>
-              <span className="stat-value">{Number.isFinite(fps) ? Math.round(fps) : '—'}</span>
+            <span className="stat-value">{Number.isFinite(fps) ? Math.round(fps) : '—'}</span>
           </div>
           <div className="stat">
             <span className="stat-label">MEM</span>
-              <span className="stat-value">{Number.isFinite(usedMb) ? `${usedMb.toFixed(0)} MB` : '—'}</span>
+            <span className="stat-value">{Number.isFinite(usedMb) ? `${usedMb.toFixed(0)} MB` : '—'}</span>
           </div>
         </div>
       </div>

@@ -156,14 +156,19 @@ const DEFAULT_TRACK_PARAMS = {
 export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = DEFAULT_TRACK_PARAMS, mutedTracks = {}, soloTracks = {}, bassParams = {}, chordParams = {}, songSettings = {}) => {
   const [toneStarted, setToneStarted] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [currentStep, setCurrentStep] = useState(0)
-  const [currentBassStep, setCurrentBassStep] = useState(0) // 0-63 for full 4-bar progression
-  const [currentChordStep, setCurrentChordStep] = useState(0) // 0-63 for full 4-bar progression
+  // Steps update at 16n. Keeping them in React state forces a full App re-render
+  // every tick, which can break interactions with native controls while playing.
+  // Use refs for the live value + a low-rate state "pulse" for UI.
+  const currentStepRef = useRef(0)
+  const currentBassStepRef = useRef(0)
+  const currentChordStepRef = useRef(0)
+  const [uiStepPulse, setUiStepPulse] = useState(0)
   const [bpm, setBpm] = useState(120)
   const [activeTracks, setActiveTracks] = useState({})
   const [masterMeter, setMasterMeter] = useState({ waveform: [], peakDb: -Infinity, rmsDb: -Infinity })
   const masterNodeRef = useRef(null)
   const [perfStats, setPerfStats] = useState({ fps: undefined, usedJSHeapSizeMb: undefined })
+  const transportClearEventIdRef = useRef(null)
   
   const synthsRef = useRef({})
   const effectsRef = useRef({})
@@ -171,6 +176,23 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const sequencerRef = useRef(null)
   const bassStepRef = useRef(0) // Track 64-step bass progression
   const chordStepRef = useRef(0) // Track 64-step chord progression
+
+  // publish step refs to UI at a lower cadence (keeps UI responsive)
+  useEffect(() => {
+    if (!toneStarted) return
+    if (!isPlaying) return
+    let raf = 0
+    let last = 0
+    const tick = (t) => {
+      if (t - last > 50) {
+        last = t
+        setUiStepPulse((p) => (p + 1) % 1000000)
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [toneStarted, isPlaying])
 
   // Lightweight performance stats (FPS + JS heap when available)
   useEffect(() => {
@@ -600,7 +622,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const db = clamp((params.volume ?? 0) + (params.outGain ?? 0), -60, 18)
       mixer.masterGain.gain.rampTo(Tone.dbToGain(db), 0.1)
     }
-  })
+  }, [toneStarted])
 
   useEffect(() => {
     if (!toneStarted) return
@@ -617,7 +639,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     mixer.delay.delayTime.rampTo(clamp(params?.delay?.time ?? 0.25, 0.01, 2), 0.1)
     mixer.delay.feedback.rampTo(clamp(params?.delay?.feedback ?? 0.25, 0, 0.95), 0.1)
     mixer.delayReturn.gain.rampTo(clamp(params?.delay?.wet ?? 0.15, 0, 1), 0.1)
-  })
+  }, [toneStarted])
 
   // Meter + waveform polling
   useEffect(() => {
@@ -854,7 +876,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     
     sequencerRef.current = new Tone.Sequence(
       (time, step) => {
-        setCurrentStep(step)
+  currentStepRef.current = step
         
         // Read from refs to get current values without triggering re-renders
         const currentSelectedPatterns = selectedPatternsRef.current
@@ -880,9 +902,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         const bassMode = bassProgressionData.mode
         
         // Debug on first step
-        if (step === 0) {
-          console.log(`Progression: ${bassProgressionData.name}, Mode: ${bassMode}, Chords:`, bassProgression)
-        }
+  // NOTE: avoid console.log in the audio callback; it can tank performance over time.
 
         const pitchOffset1 = currentTrackParams[1]?.pitch || 0
         const pitchOffset3 = currentTrackParams[3]?.pitch || 0
@@ -944,7 +964,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         // Use ref for bass step to track position in 4-bar cycle
         const bassStep = bassStepRef.current
         bassStepRef.current = (bassStep + 1) % BASS_TOTAL_STEPS
-        setCurrentBassStep(bassStep)
+  currentBassStepRef.current = bassStep
         
         // Determine which bar we're in (0-3) based on the 64-step cycle
         const barIndex = Math.floor(bassStep / 16)
@@ -969,7 +989,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         
         const chordStep = chordStepRef.current
         chordStepRef.current = (chordStep + 1) % CHORD_TOTAL_STEPS
-        setCurrentChordStep(chordStep)
+  currentChordStepRef.current = chordStep
         
         // Determine which bar we're in (0-3) based on the 64-step cycle
         const chordBarIndex = Math.floor(chordStep / 16)
@@ -992,9 +1012,21 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         // Update active tracks once per step with all active tracks
         if (Object.keys(activeThisStep).length > 0) {
           setActiveTracks(activeThisStep)
-          // Schedule clearing active tracks 100ms later (in audio time)
-          Tone.Draw.schedule(() => {
+
+          // Cancel any previously scheduled clear to avoid building up a queue
+          // when CPU is under pressure.
+          if (transportClearEventIdRef.current != null) {
+            try {
+              Tone.getTransport().clear(transportClearEventIdRef.current)
+            } catch {
+              // ignore
+            }
+            transportClearEventIdRef.current = null
+          }
+
+          transportClearEventIdRef.current = Tone.getTransport().scheduleOnce(() => {
             setActiveTracks({})
+            transportClearEventIdRef.current = null
           }, time + 0.1)
         }
       },
@@ -1017,11 +1049,20 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     if (isPlaying) {
       Tone.getTransport().stop()
       Tone.getTransport().cancel()
+      if (transportClearEventIdRef.current != null) {
+        try {
+          Tone.getTransport().clear(transportClearEventIdRef.current)
+        } catch {
+          // ignore
+        }
+        transportClearEventIdRef.current = null
+      }
       sequencerRef.current?.stop()
       setIsPlaying(false)
-      setCurrentStep(0)
-      setCurrentBassStep(0)
-      setCurrentChordStep(0)
+  currentStepRef.current = 0
+  currentBassStepRef.current = 0
+  currentChordStepRef.current = 0
+  setUiStepPulse((p) => (p + 1) % 1000000)
       bassStepRef.current = 0
       chordStepRef.current = 0
     } else {
@@ -1039,9 +1080,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       transport.position = 0
       bassStepRef.current = 0
       chordStepRef.current = 0
-      setCurrentStep(0)
-      setCurrentBassStep(0)
-      setCurrentChordStep(0)
+  currentStepRef.current = 0
+  currentBassStepRef.current = 0
+  currentChordStepRef.current = 0
+  setUiStepPulse((p) => (p + 1) % 1000000)
 
       transport.start('+0.1')
       sequencerRef.current?.start('+0.1')
@@ -1126,9 +1168,12 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   return {
     toneStarted,
     isPlaying,
-    currentStep,
-    currentBassStep,
-    currentChordStep,
+  // Low-rate UI pulse: consumers can use this to re-render while reading getters.
+  uiStepPulse,
+  // Preferred: read latest values without forcing re-renders.
+  getCurrentStep: () => currentStepRef.current,
+  getCurrentBassStep: () => currentBassStepRef.current,
+  getCurrentChordStep: () => currentChordStepRef.current,
     bpm,
     setBpm,
     activeTracks,

@@ -14,7 +14,9 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  pointer-events: none;
+  /* Allow normal interaction with UI controls.
+    Disabling pointer events here breaks form controls (e.g. <select>) while playing. */
+  pointer-events: auto;
 }
 
 /* mientras está la pantalla de inicio */

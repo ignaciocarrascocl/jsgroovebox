@@ -82,6 +82,7 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange }) =>
               className="lc-bpm-input"
               inputMode="numeric"
               pattern="[0-9]*"
+              size={8}
               value={bpmInput}
               onChange={(e) => setBpmInput(e.target.value)}
               onBlur={() => commitBpm(Number(bpmInput))}
@@ -101,16 +102,6 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange }) =>
           <button type="button" className="lc-bpm-action" onClick={handleTap}>Tap</button>
           <button type="button" className="lc-bpm-action" onClick={() => commitBpm(120)}>Reset</button>
         </div>
-
-        <input
-          type="range"
-          min={BPM_MIN}
-          max={BPM_MAX}
-          step={BPM_STEP}
-          value={bpm}
-          onChange={(e) => onBpmChange(Number(e.target.value))}
-          className="lc-slider"
-        />
       </div>
 
       <div className="lc-block">
@@ -121,6 +112,7 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange }) =>
             value={progression}
             onChange={(e) => onProgressionChange(Number(e.target.value))}
             aria-label="Selector de progresión"
+            size={12}
           >
             {Object.entries(groupedProgressions).map(([groupName, items]) => (
               <optgroup key={groupName} label={groupName}>
