@@ -26,7 +26,7 @@
 .selector-label {
   display: block;
   color: rgba(255, 255, 255, 0.4);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -146,7 +146,7 @@
 
 .bass-track .sound-preset-btn {
   padding: 8px 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   background: rgba(0, 0, 0, 0.45);
   color: rgba(255, 255, 255, 0.85);

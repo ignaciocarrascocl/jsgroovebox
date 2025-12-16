@@ -26,7 +26,7 @@
 .selector-label {
   display: block;
   color: rgba(255, 255, 255, 0.4);
-  font-size: 8px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -116,9 +116,9 @@
 .chord-track .sound-preset-selector {
   display: flex;
   flex-direction: column;
-  padding: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
 }
 
 .chord-track .sound-preset-buttons {
@@ -128,13 +128,13 @@
 }
 
 .chord-track .sound-preset-btn {
-  padding: 4px 2px;
-  font-size: 7px;
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.4);
-  color: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  padding: 8px 6px;
+  font-size: 14px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -393,4 +393,118 @@
 .chord-pattern-step.current {
   outline: 2px solid white;
   outline-offset: -1px;
+}
+
+/* ADSR Section */
+.adsr-section {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.adsr-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 8px;
+}
+
+.adsr-knobs {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.adsr-section .knob-wrapper {
+  width: 44px;
+}
+
+.adsr-section .knob-label {
+  font-size: 10px;
+}
+
+/* LFO Section */
+.lfo-section {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.lfo-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 8px;
+}
+
+.lfo-knobs {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.lfo-section .knob-wrapper {
+  width: 44px;
+}
+
+.lfo-section .knob-label {
+  font-size: 10px;
+}
+
+/* FX Section */
+.fx-section {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.fx-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 8px;
+}
+
+.fx-knobs {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.fx-section .knob-wrapper {
+  width: 44px;
+}
+
+.fx-section .knob-label {
+  font-size: 10px;
 }

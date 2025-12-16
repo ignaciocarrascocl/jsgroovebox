@@ -1,0 +1,46 @@
+/* Pattern Section */
+.pattern-section {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 6px;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
+.pattern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* Pattern Toggle */
+.pattern-toggle {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.pattern-toggle .toggle-btn {
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pattern-toggle .toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pattern-toggle .toggle-btn.active {
+  background: var(--track-color);
+  border-color: var(--track-color);
+  color: white;
+}

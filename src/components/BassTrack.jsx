@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { BASS_PATTERNS, WAVE_TYPES, BASS_SOUND_PRESETS } from '../constants/bass'
 import Knob from './Knob'
+import TrackHead from './TrackHead'
+import SoundPresets from './SoundPresets'
+import PatternSelector from './PatternSelector'
 import './BassTrack.css'
 
 // Pattern step editor for bass (16 steps per bar, repeats each bar)
@@ -101,29 +104,6 @@ const BassPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, 
   )
 }
 
-// Sound preset selector
-const SoundPresetSelector = ({ onApplyPreset, color }) => {
-  return (
-    <div className="sound-preset-selector">
-      <span className="selector-label">Sound Presets</span>
-      <div className="sound-preset-buttons">
-        {BASS_SOUND_PRESETS.map((preset, idx) => (
-          <button
-            key={idx}
-            className="sound-preset-btn"
-            style={{ '--preset-color': color }}
-            onClick={() => onApplyPreset(preset)}
-          >
-            {preset.name}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-
-
 const BassTrack = ({
   track,
   isActive,
@@ -144,7 +124,6 @@ const BassTrack = ({
   onReset,
   activeResetTarget,
 }) => {
-  const [useCustomPattern, setUseCustomPattern] = useState(false)
 
   const handleParamChange = (param, value) => {
     onParamChange(track.id, { ...bassParams, [param]: value })
@@ -173,89 +152,38 @@ const BassTrack = ({
       style={{ '--track-color': track.color }}
     >
       {/* Wave Visualizer Header */}
-      <div className="bass-track-header">
-        <button
-          type="button"
-          className={`track-title-btn ${isActive ? 'active' : ''}`}
-          onClick={() => onPlay(track.id)}
-          title="Trigger"
-          style={{ '--track-color': track.color }}
-        >
-          <span className="track-title">{track.name}</span>
-        </button>
-        <div className="bass-track-actions">
-          <button 
-            className={`action-btn solo-btn ${isSoloed ? 'active' : ''}`}
-            onClick={() => onSoloToggle(track.id)}
-            title="Solo"
-            aria-pressed={isSoloed}
-            aria-label="Solo track"
-          >
-            S
-          </button>
-          <button 
-            className={`action-btn mute-btn ${isMuted ? 'active' : ''}`}
-            onClick={() => onMuteToggle(track.id)}
-            title="Mute (M)"
-            aria-pressed={isMuted}
-            aria-label="Mute track"
-          >
-            M
-          </button>
-          <button
-            className="action-btn reset-btn"
-            title="Reset bass"
-            onClick={() => onReset?.()}
-            aria-label="Reset bass"
-          >
-            ⟲
-          </button>
-        </div>
-      {/* header end */}
-      </div>
-      {/* Presets row (separate from header) */}
-      <div className="bass-presets-row">
-        <SoundPresetSelector
-          onApplyPreset={handleSoundPreset}
-          color={track.color}
-        />
-      </div>
+      <TrackHead
+        track={track}
+        isActive={isActive}
+        isMuted={isMuted}
+        isSoloed={isSoloed}
+        onPlay={onPlay}
+        onMuteToggle={onMuteToggle}
+        onSoloToggle={onSoloToggle}
+        onReset={onReset}
+        trackId={track.id}
+      />
+
+      {/* Sound Presets */}
+      <SoundPresets 
+        presets={BASS_SOUND_PRESETS}
+        onApplyPreset={handleSoundPreset}
+        color={track.color}
+      />
 
       {/* Pattern Section */}
-      <div className="bass-pattern-section">
-        {/* Pattern Accordion Selector - like drum tracks */}
-        {!useCustomPattern && (
-          <BassPatternAccordion
-            patterns={BASS_PATTERNS}
-            selectedIndex={selectedPattern}
-            onSelect={(idx) => onPatternChange(track.id, idx)}
-            currentStep={currentStep}
-            isPlaying={isPlaying}
-            color={track.color}
-          />
-        )}
-        
-        {/* Custom Pattern Editor */}
-        {useCustomPattern && (
-          <BassPatternEditor 
-            pattern={customPattern || Array(16).fill(0)}
-            onChange={(p) => onCustomPatternChange(track.id, p)}
-            currentStep={currentStep}
-            isPlaying={isPlaying}
-            color={track.color}
-          />
-        )}
-        
-        {/* Toggle between preset and custom */}
-        <div className="pattern-toggle">
-          <button 
-            className={`toggle-btn ${useCustomPattern ? 'active' : ''}`}
-            onClick={() => setUseCustomPattern(!useCustomPattern)}
-          >
-            {useCustomPattern ? '← Presets' : 'Custom'}
-          </button>
-        </div>
-      </div>
+      <PatternSelector
+        patterns={BASS_PATTERNS}
+        selectedIndex={selectedPattern}
+        customPattern={customPattern}
+        onPatternChange={(idx) => onPatternChange(track.id, idx)}
+        onCustomPatternChange={(p) => onCustomPatternChange(track.id, p)}
+        currentStep={currentStep}
+        isPlaying={isPlaying}
+        color={track.color}
+        PatternAccordionComponent={BassPatternAccordion}
+        PatternEditorComponent={BassPatternEditor}
+      />
 
       {/* Controls Section - All Knobs (8 total like percussion tracks) */}
       <div className="bass-track-controls">

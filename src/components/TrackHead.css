@@ -1,0 +1,52 @@
+/* Track Header */
+.track-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Reuse Track.css button styles */
+.track-header .track-title-btn {
+  flex: 1;
+}
+
+/* Track Actions (Mute/Solo) */
+.track-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+}
+
+.track-actions .action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.track-actions .action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.track-actions .mute-btn.active {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: white;
+}
+
+.track-actions .solo-btn.active {
+  background: #f1c40f;
+  border-color: #f1c40f;
+  color: #1a1a28;
+}

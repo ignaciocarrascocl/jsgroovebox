@@ -14,6 +14,7 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
+  padding-top: 80px; /* Push content down to avoid overlap with fixed controls */
   /* Allow normal interaction with UI controls.
     Disabling pointer events here breaks form controls (e.g. <select>) while playing. */
   pointer-events: auto;

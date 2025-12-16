@@ -75,62 +75,7 @@ const MasterFX = ({
       />
 
       <div className="masterfx-grid">
-  <div className={`fx-strip comp ${activeResetTarget === 'comp' ? 'just-reset' : ''}`}>
-          <div className="fx-strip-title">COMP <button className="fx-strip-reset" title="Reset compressor" onClick={() => onResetComp?.()}>⟲</button></div>
-          <div className="viz">
-            <CompressorViz
-              threshold={masterParams?.compThreshold}
-              ratio={masterParams?.compRatio}
-              makeup={masterParams?.compMakeup}
-            />
-          </div>
-          <div className="knob-grid">
-            {/* Threshold: level where compression starts (dB) */}
-            <Knob
-              label="Threshold"
-              unit="dB"
-              tooltip="Level where compression starts"
-              value={masterParams?.compThreshold ?? -24}
-              min={-60}
-              max={0}
-              onChange={(v) => handleMaster('compThreshold', v)}
-              color="#ff6b6b"
-            />
-            {/* Ratio: how strongly levels above threshold are reduced */}
-            <Knob
-              label="Ratio"
-              unit="x"
-              tooltip="Compression ratio (e.g., 4 means 4:1)"
-              value={masterParams?.compRatio ?? 4}
-              min={1}
-              max={20}
-              onChange={(v) => handleMaster('compRatio', v)}
-              color="#ff6b6b"
-            />
-            {/* Attack: how fast the compressor reacts (ms) */}
-            <Knob
-              label="Attack"
-              unit="ms"
-              tooltip="How fast the compressor reacts (ms)"
-              value={masterParams?.compAttack ?? 10}
-              min={0.1}
-              max={200}
-              onChange={(v) => handleMaster('compAttack', v)}
-              color="#ff6b6b"
-            />
-            {/* Release: how fast the compressor releases (ms) - a close 4th to Attack */}
-            <Knob
-              label="Release"
-              unit="ms"
-              tooltip="How fast the compressor releases (ms)"
-              value={masterParams?.compRelease ?? 200}
-              min={10}
-              max={2000}
-              onChange={(v) => handleMaster('compRelease', v)}
-              color="#ff6b6b"
-            />
-          </div>
-        </div>
+
 
   <div className={`fx-strip eq ${activeResetTarget === 'eq' ? 'just-reset' : ''}`}>
           <div className="fx-strip-title">EQ <button className="fx-strip-reset" title="Reset EQ" onClick={() => onResetEQ?.()}>⟲</button></div>
@@ -261,8 +206,6 @@ const MasterFX = ({
           </div>
           {/* EQViz already shown at top of this strip */}
         </div>
-
-
   <div className={`fx-strip ${activeResetTarget === 'filter' ? 'just-reset' : ''}`}>
           <div className="fx-strip-title">FILTER <button className="fx-strip-reset" title="Reset filter" onClick={() => onResetFilter?.()}>⟲</button></div>
           <div className="viz">
@@ -428,7 +371,6 @@ const MasterFX = ({
             </div>
           </div>
         </div>
-
   <div className={`fx-strip ${activeResetTarget === 'delay' ? 'just-reset' : ''}`}>
           <div className="fx-strip-title">DELAY <button className="fx-strip-reset" title="Reset delay" onClick={() => onResetDelay?.()}>⟲</button></div>
           <div className="fx-strip-sub">
@@ -521,7 +463,62 @@ const MasterFX = ({
             color="#34d399"
           />
         </div>
-  
+    <div className={`fx-strip comp ${activeResetTarget === 'comp' ? 'just-reset' : ''}`}>
+          <div className="fx-strip-title">COMP <button className="fx-strip-reset" title="Reset compressor" onClick={() => onResetComp?.()}>⟲</button></div>
+          <div className="viz">
+            <CompressorViz
+              threshold={masterParams?.compThreshold}
+              ratio={masterParams?.compRatio}
+              makeup={masterParams?.compMakeup}
+            />
+          </div>
+          <div className="knob-grid">
+            {/* Threshold: level where compression starts (dB) */}
+            <Knob
+              label="Threshold"
+              unit="dB"
+              tooltip="Level where compression starts"
+              value={masterParams?.compThreshold ?? -24}
+              min={-60}
+              max={0}
+              onChange={(v) => handleMaster('compThreshold', v)}
+              color="#ff6b6b"
+            />
+            {/* Ratio: how strongly levels above threshold are reduced */}
+            <Knob
+              label="Ratio"
+              unit="x"
+              tooltip="Compression ratio (e.g., 4 means 4:1)"
+              value={masterParams?.compRatio ?? 4}
+              min={1}
+              max={20}
+              onChange={(v) => handleMaster('compRatio', v)}
+              color="#ff6b6b"
+            />
+            {/* Attack: how fast the compressor reacts (ms) */}
+            <Knob
+              label="Attack"
+              unit="ms"
+              tooltip="How fast the compressor reacts (ms)"
+              value={masterParams?.compAttack ?? 10}
+              min={0.1}
+              max={200}
+              onChange={(v) => handleMaster('compAttack', v)}
+              color="#ff6b6b"
+            />
+            {/* Release: how fast the compressor releases (ms) - a close 4th to Attack */}
+            <Knob
+              label="Release"
+              unit="ms"
+              tooltip="How fast the compressor releases (ms)"
+              value={masterParams?.compRelease ?? 200}
+              min={10}
+              max={2000}
+              onChange={(v) => handleMaster('compRelease', v)}
+              color="#ff6b6b"
+            />
+          </div>
+        </div>
   <div className={`fx-strip ${activeResetTarget === 'volume' ? 'just-reset' : ''}`}>
           <div className="fx-strip-title">VOLUME <button className="fx-strip-reset" title="Reset output level" onClick={() => onResetVolume?.()}>⟲</button></div>
           <div className="viz viz--tall">

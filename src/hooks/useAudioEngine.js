@@ -679,6 +679,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       chords: {
         compressor: new Tone.Compressor(-30, 3),
         filter: new Tone.Filter(2500, 'lowpass'),
+        distortion: new Tone.Distortion(0),
+        chorus: new Tone.Chorus(1.5, 3.5, 0.5),
         lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
         delaySend: new Tone.Gain(0),
         reverbSend: new Tone.Gain(0),
@@ -831,6 +833,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     // Connect LFO to filter frequency
     effectsRef.current.chords.lfo.connect(effectsRef.current.chords.filter.frequency)
     effectsRef.current.chords.lfo.start()
+    // Start chorus internal LFO if available
+    if (effectsRef.current.chords.chorus && typeof effectsRef.current.chords.chorus.start === 'function') {
+      effectsRef.current.chords.chorus.start()
+    }
 
     synthsRef.current.chords = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'sawtooth' },
@@ -838,7 +844,9 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     })
     synthsRef.current.chords.chain(
       effectsRef.current.chords.compressor,
+      effectsRef.current.chords.distortion,
       effectsRef.current.chords.filter,
+      effectsRef.current.chords.chorus,
       mixerRef.current.masterInput
     )
     if (effectsRef.current.chords?.filter) {
@@ -1187,7 +1195,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     synthsRef.current.bass.envelope.attack = bassParams[6]?.attack ?? 0.01
     synthsRef.current.bass.envelope.decay = bassParams[6]?.decay ?? 0.3
       synthsRef.current.bass.envelope.sustain = 0.1
-      synthsRef.current.bass.envelope.release = 0.1
+    synthsRef.current.bass.envelope.release = 0.1
     }
     
     if (effectsRef.current.bass?.filter) {
@@ -1248,7 +1256,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
           attack: chordParams[7]?.attack ?? 0.05,
           decay: chordParams[7]?.decay ?? 0.4,
           sustain: 0.2,
-          release: 0.3,
+          release: chordParams[7]?.release ?? 0.3,
         },
         detune: chordParams[7]?.detune ?? 5,
       })
@@ -1262,9 +1270,25 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       const lfoRate = chordParams[7]?.lfoRate ?? 0
       const lfoDepth = chordParams[7]?.lfoDepth ?? 0
       const filterFreq = chordParams[7]?.filter ?? 2500
+       // Set LFO waveform type (sine/triangle/sawtooth/square)
+       const lfoWave = chordParams[7]?.lfoWave ?? 'sine'
+      effectsRef.current.chords.lfo.type = lfoWave
+      // Be defensive across Tone.js versions that store oscillator type under `.oscillator`
+      if (effectsRef.current.chords.lfo.oscillator) effectsRef.current.chords.lfo.oscillator.type = lfoWave
+      
       effectsRef.current.chords.lfo.frequency.linearRampTo(lfoRate, 0.1)
       effectsRef.current.chords.lfo.min = Math.max(20, filterFreq - lfoDepth)
       effectsRef.current.chords.lfo.max = Math.min(20000, filterFreq + lfoDepth)
+    }
+    if (effectsRef.current.chords?.distortion) {
+      effectsRef.current.chords.distortion.set({distortion: chordParams[7]?.drive ?? 0})
+    }
+    if (effectsRef.current.chords?.chorus) {
+      if (Tone.getContext().state === 'running') {
+        effectsRef.current.chords.chorus.wet.rampTo(clamp(chordParams[7]?.chorus ?? 0, 0, 1), 0.1)
+      } else {
+        effectsRef.current.chords.chorus.wet.value = clamp(chordParams[7]?.chorus ?? 0, 0, 1)
+      }
     }
     applyCompressionAmount(effectsRef.current.chords?.compressor, chordParams[7]?.compression)
   if (effectsRef.current.chords?.delaySend) effectsRef.current.chords.delaySend.gain.rampTo(clamp(chordParams[7]?.delay ?? 0, 0, 1), 0.1)
