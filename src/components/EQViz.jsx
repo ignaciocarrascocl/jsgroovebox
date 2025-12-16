@@ -64,7 +64,7 @@ const biquadMagAt = (coeffs, freq, fs) => {
 
 const defaultFs = 48000
 
-const EQViz = ({ low = { f: 100, g: 0, q: 1 }, mid = { f: 1000, g: 0, q: 1 }, high = { f: 8000, g: 0, q: 1 } }) => {
+const EQViz = ({ low = { f: 100, g: 0, q: 1 }, lowMid = { f: 300, g: 0, q: 1 }, mid = { f: 1000, g: 0, q: 1 }, highMid = { f: 3000, g: 0, q: 1 }, high = { f: 8000, g: 0, q: 1 } }) => {
   const data = useMemo(() => {
     const fs = defaultFs
     const broad = 512
@@ -98,19 +98,23 @@ const EQViz = ({ low = { f: 100, g: 0, q: 1 }, mid = { f: 1000, g: 0, q: 1 }, hi
 
     // compute coeffs
     const lowC = computeBiquadCoeffs('lowshelf', low.f, low.q, low.g, fs)
+    const lowMidC = computeBiquadCoeffs('peaking', lowMid.f, lowMid.q, lowMid.g, fs)
     const midC = computeBiquadCoeffs('peaking', mid.f, mid.q, mid.g, fs)
+    const highMidC = computeBiquadCoeffs('peaking', highMid.f, highMid.q, highMid.g, fs)
     const highC = computeBiquadCoeffs('highshelf', high.f, high.q, high.g, fs)
 
     const mags = freqs.map((f) => {
       let mag = 1
       mag *= biquadMagAt(lowC, f, fs)
+      mag *= biquadMagAt(lowMidC, f, fs)
       mag *= biquadMagAt(midC, f, fs)
+      mag *= biquadMagAt(highMidC, f, fs)
       mag *= biquadMagAt(highC, f, fs)
       return { f, mag }
     })
 
     return mags
-  }, [low, mid, high])
+  }, [low, lowMid, mid, highMid, high])
 
   const width = 240
   const height = 96
@@ -136,29 +140,31 @@ const EQViz = ({ low = { f: 100, g: 0, q: 1 }, mid = { f: 1000, g: 0, q: 1 }, hi
   const baselineY = toYDb(displayMinDb)
   const fillPath = `${path} L ${width} ${baselineY.toFixed(2)} L 0 ${baselineY.toFixed(2)} Z`
 
-  const candidateFreqs = [100, 1000, 10000]
+  const candidateFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
   const freqTicks = candidateFreqs.filter((f) => f >= 20 && f <= 20000)
   const formatHz = (f) => (f >= 1000 ? `${Math.round(f / 1000)}k` : `${f}`)
 
   return (
     <div className="filter-viz" aria-hidden="true">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+      <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="rgba(255,255,255,0.04)" />
             <stop offset="100%" stopColor="rgba(255,255,255,0.01)" />
           </linearGradient>
         </defs>
-        <rect x="0" y="0" width={width} height={height} fill="url(#g2)" rx="6" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+        <rect x="0" y="0" width={width} height={height} fill="url(#g2)" rx="6" />
         <path d={fillPath} fill="rgba(255,255,255,0.03)" stroke="none" />
         <path d={path} fill="none" stroke="rgba(99,255,191,0.95)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {freqTicks.map((f) => (
-          <g key={f}>
-            <line x1={toX(f)} x2={toX(f)} y1={height - 10} y2={height - 2} stroke="rgba(255,255,255,0.06)" />
-            <text x={toX(f)} y={height - 12} fontSize="8" fill="rgba(255,255,255,0.65)" textAnchor="middle">{formatHz(f)}</text>
-          </g>
+          <line key={f} x1={toX(f)} x2={toX(f)} y1={height - 10} y2={height - 2} stroke="rgba(255,255,255,0.06)" />
         ))}
       </svg>
+      <div className="filter-viz__ticks" aria-hidden="true">
+        {freqTicks.map((f) => (
+          <div key={f} className="filter-viz__tick" style={{ left: `${(Math.log10(f / 20) / Math.log10(20000 / 20)) * 100}%` }}>{formatHz(f)}</div>
+        ))}
+      </div>
     </div>
   )
 }

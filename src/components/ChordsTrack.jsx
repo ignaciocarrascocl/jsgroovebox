@@ -134,18 +134,22 @@ const ChordsTrack = ({
     onParamChange(track.id, { 
       ...chordParams, 
       waveType: preset.waveType,
-      filter: preset.filter,
-      resonance: preset.resonance,
-      attack: preset.attack,
-      decay: preset.decay,
-      release: preset.release ?? 0.3,
-      detune: preset.detune,
-      lfoRate: preset.lfoRate,
-      lfoDepth: preset.lfoDepth,
-      lfoWave: preset.lfoWave ?? 'sine',
-      compression: preset.compression,
-      drive: preset.drive ?? 0,
-      chorus: preset.chorus ?? 0
+      waveShape: preset.waveShape ?? chordParams?.waveShape ?? 0,
+      volume: preset.volume ?? chordParams?.volume ?? -10,
+      filter: preset.filter ?? chordParams?.filter ?? 2500,
+      resonance: preset.resonance ?? chordParams?.resonance ?? 2,
+      attack: preset.attack ?? chordParams?.attack ?? 0.05,
+      decay: preset.decay ?? chordParams?.decay ?? 0.4,
+      release: preset.release ?? chordParams?.release ?? 0.3,
+      detune: preset.detune ?? chordParams?.detune ?? 5,
+      lfoRate: preset.lfoRate ?? chordParams?.lfoRate ?? 0,
+      lfoDepth: preset.lfoDepth ?? chordParams?.lfoDepth ?? 0,
+      lfoWave: preset.lfoWave ?? chordParams?.lfoWave ?? 'sine',
+      compression: preset.compression ?? chordParams?.compression ?? 0.3,
+      drive: preset.drive ?? chordParams?.drive ?? 0,
+      chorus: preset.chorus ?? chordParams?.chorus ?? 0,
+      reverb: preset.reverb ?? chordParams?.reverb ?? 0.2,
+      delay: preset.delay ?? chordParams?.delay ?? 0
     })
   }
 
@@ -191,53 +195,75 @@ const ChordsTrack = ({
       {/* Controls Section - All Knobs */}
       <div className="chord-track-controls">
         <div className="chord-knobs-section">
-          {/* Volume */}
-          <Knob 
-            label="Volume" 
-            value={chordParams?.volume ?? -10} 
-            min={-60} 
-            max={6} 
-            onChange={(v) => handleParamChange('volume', v)}
-            color={track.color}
-          />
-          {/* Wave Type - mapped to numeric value */}
-          <Knob 
-            label="Wave" 
-            value={WAVE_TYPES.indexOf(chordParams?.waveType || 'sawtooth')} 
-            min={0} 
-            max={WAVE_TYPES.length - 1} 
-            step={1}
-            onChange={(v) => handleParamChange('waveType', WAVE_TYPES[Math.round(v)])}
-            displayValue={WAVE_TYPES[Math.round(WAVE_TYPES.indexOf(chordParams?.waveType || 'sawtooth'))].slice(0, 3).toUpperCase()}
-            color={track.color}
-          />
-          {/* Filter */}
-          <Knob 
-            label="Filter" 
-            value={chordParams?.filter ?? 2500} 
-            min={200} 
-            max={8000} 
-            onChange={(v) => handleParamChange('filter', v)}
-            color={track.color}
-          />
-          {/* Resonance */}
-          <Knob 
-            label="Reso" 
-            value={chordParams?.resonance ?? 2} 
-            min={0.5} 
-            max={15} 
-            onChange={(v) => handleParamChange('resonance', v)}
-            color={track.color}
-          />
-          {/* Detune - for chord richness */}
-          <Knob 
-            label="Detune" 
-            value={chordParams?.detune ?? 5} 
-            min={0} 
-            max={30} 
-            onChange={(v) => handleParamChange('detune', v)}
-            color={track.color}
-          />
+          {/* placeholder for layout balance */}
+          <div style={{ width: '100%' }} />
+          <div style={{ width: '100%' }} />
+          <div style={{ width: '100%' }} />
+        </div>
+
+        {/* Wave section (styled like LFO/FX) */}
+        <div className="wave-section">
+          <div className="wave-header">Wave</div>
+          <div className="wave-knobs">
+            <Knob 
+              label="Wave" 
+              value={WAVE_TYPES.indexOf(chordParams?.waveType || 'sawtooth')} 
+              min={0} 
+              max={WAVE_TYPES.length - 1} 
+              step={1}
+              onChange={(v) => handleParamChange('waveType', WAVE_TYPES[Math.round(v)])}
+              displayValue={WAVE_TYPES[Math.round(WAVE_TYPES.indexOf(chordParams?.waveType || 'sawtooth'))].slice(0, 3).toUpperCase()}
+              color={track.color}
+            />
+            <Knob
+              label="Shape"
+              value={chordParams?.waveShape ?? 0}
+              min={0}
+              max={1}
+              step={0.01}
+              onChange={(v) => handleParamChange('waveShape', v)}
+              color={track.color}
+            />
+            <Knob 
+              label="Detune" 
+              value={chordParams?.detune ?? 5} 
+              min={0} 
+              max={30} 
+              onChange={(v) => handleParamChange('detune', v)}
+              color={track.color}
+            />
+            <Knob 
+              label="Volume" 
+              value={chordParams?.volume ?? -10} 
+              min={-60} 
+              max={6} 
+              onChange={(v) => handleParamChange('volume', v)}
+              color={track.color}
+            />
+           </div>
+         </div>
+
+        {/* Filter section (styled like LFO/FX) */}
+        <div className="filter-section">
+          <div className="filter-header">Filter</div>
+          <div className="filter-knobs">
+            <Knob 
+              label="Filter" 
+              value={chordParams?.filter ?? 2500} 
+              min={200} 
+              max={8000} 
+              onChange={(v) => handleParamChange('filter', v)}
+              color={track.color}
+            />
+            <Knob 
+              label="Reso" 
+              value={chordParams?.resonance ?? 2} 
+              min={0.5} 
+              max={15} 
+              onChange={(v) => handleParamChange('resonance', v)}
+              color={track.color}
+            />
+          </div>
         </div>
         <div className="lfo-section">
           <div className="lfo-header">LFO</div>

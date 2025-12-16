@@ -27,7 +27,7 @@ const CompressorViz = ({ threshold = -24, ratio = 4, makeup = 0 }) => {
 
   return (
     <div className="filter-viz" aria-hidden="true">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
         <rect x="0" y="0" width={width} height={height} fill="rgba(0,0,0,0.02)" rx="6" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
         {/* IO curve */}
         <path d={path} fill="none" stroke="rgba(255,107,107,0.95)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />

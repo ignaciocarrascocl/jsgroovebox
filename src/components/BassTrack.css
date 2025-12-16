@@ -463,3 +463,46 @@
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+
+/* Wave & Filter sections (match LFO/FX visual style) */
+.wave-section,
+.filter-section {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.wave-header,
+.filter-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 8px;
+}
+
+.wave-knobs,
+.filter-knobs {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.wave-section .knob-wrapper,
+.filter-section .knob-wrapper {
+  width: 44px;
+}
+
+.wave-section .knob-label,
+.filter-section .knob-label {
+  font-size: 10px;
+}

@@ -47,6 +47,8 @@ export const CHORD_SOUND_PRESETS = [
   {
     name: 'Warm Piano',
     waveType: 'sine',
+    waveShape: 0.12,
+    volume: -8,
     filter: 3200,
     resonance: 1.2,
     attack: 0.005,
@@ -59,12 +61,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.25,
     drive: 0,
     chorus: 0.1,
+    reverb: 0.15,
+    delay: 0.02,
   },
 
   // 2) Bright EP - clear, sparkling
   {
     name: 'Bright EP',
     waveType: 'triangle',
+    waveShape: 0.35,
+    volume: -6,
     filter: 4800,
     resonance: 2.1,
     attack: 0.001,
@@ -77,12 +83,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.2,
     drive: 0.02,
     chorus: 0.05,
+    reverb: 0.2,
+    delay: 0.01,
   },
 
   // 3) Organ Pad - rich, sustained
   {
     name: 'Organ Pad',
     waveType: 'square',
+    waveShape: 0.5,
+    volume: -12,
     filter: 2200,
     resonance: 1.8,
     attack: 0.02,
@@ -95,12 +105,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.3,
     drive: 0.05,
     chorus: 0.15,
+    reverb: 0.35,
+    delay: 0,
   },
 
   // 4) Synth Brass - punchy, bright
   {
     name: 'Synth Brass',
     waveType: 'sawtooth',
+    waveShape: 0.25,
+    volume: -5,
     filter: 3600,
     resonance: 3.2,
     attack: 0.01,
@@ -113,12 +127,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.35,
     drive: 0.08,
     chorus: 0.1,
+    reverb: 0.05,
+    delay: 0,
   },
 
   // 5) String Ensemble - lush, detuned
   {
     name: 'Strings',
     waveType: 'sawtooth',
+    waveShape: 0.8,
+    volume: -14,
     filter: 1800,
     resonance: 1.5,
     attack: 0.8,
@@ -131,12 +149,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.2,
     drive: 0,
     chorus: 0.2,
+    reverb: 0.6,
+    delay: 0.02,
   },
 
   // 6) Electric Piano - percussive, bright
   {
     name: 'Electric Piano',
     waveType: 'triangle',
+    waveShape: 0.3,
+    volume: -7,
     filter: 5200,
     resonance: 2.5,
     attack: 0.001,
@@ -149,12 +171,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.25,
     drive: 0.03,
     chorus: 0.08,
+    reverb: 0.25,
+    delay: 0.01,
   },
 
   // 7) Choir Pad - ethereal, wide
   {
     name: 'Choir',
     waveType: 'sine',
+    waveShape: 0.4,
+    volume: -16,
     filter: 1400,
     resonance: 1.0,
     attack: 1.2,
@@ -167,12 +193,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.15,
     drive: 0,
     chorus: 0.3,
+    reverb: 0.7,
+    delay: 0.05,
   },
 
   // 8) FM Lead - metallic, evolving
   {
     name: 'FM Lead',
     waveType: 'sawtooth',
+    waveShape: 0.6,
+    volume: -4,
     filter: 2800,
     resonance: 4.0,
     attack: 0.02,
@@ -185,12 +215,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.3,
     drive: 0.1,
     chorus: 0.05,
+    reverb: 0.05,
+    delay: 0.02,
   },
 
   // 9) Wurlitzer - vintage, tremolo
   {
     name: 'Wurlitzer',
     waveType: 'triangle',
+    waveShape: 0.22,
+    volume: -6,
     filter: 4000,
     resonance: 2.8,
     attack: 0.003,
@@ -203,12 +237,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.25,
     drive: 0.04,
     chorus: 0.12,
+    reverb: 0.15,
+    delay: 0.02,
   },
 
   // 10) Rhodes - mellow, chorus
   {
     name: 'Rhodes',
     waveType: 'sine',
+    waveShape: 0.28,
+    volume: -8,
     filter: 2600,
     resonance: 1.8,
     attack: 0.01,
@@ -221,12 +259,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.2,
     drive: 0.02,
     chorus: 0.25,
+    reverb: 0.28,
+    delay: 0.03,
   },
 
   // 11) Harpsichord - plucky, bright
   {
     name: 'Harpsichord',
     waveType: 'square',
+    waveShape: 0.05,
+    volume: -9,
     filter: 6000,
     resonance: 3.5,
     attack: 0.001,
@@ -239,12 +281,16 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.3,
     drive: 0.06,
     chorus: 0,
+    reverb: 0.05,
+    delay: 0,
   },
 
   // 12) Synth Wave - modern, filtered
   {
     name: 'Synth Wave',
     waveType: 'sawtooth',
+    waveShape: 0.9,
+    volume: -6,
     filter: 800,
     resonance: 6.0,
     attack: 0.05,
@@ -257,6 +303,96 @@ export const CHORD_SOUND_PRESETS = [
     compression: 0.4,
     drive: 0.12,
     chorus: 0.18,
+    reverb: 0.12,
+    delay: 0.04,
+  },
+
+  // 13) Ambient Pad - slow evolving pad
+  {
+    name: 'Ambient Pad',
+    waveType: 'sine',
+    waveShape: 0.6,
+    volume: -14,
+    filter: 1200,
+    resonance: 1.4,
+    attack: 1.0,
+    decay: 2.5,
+    release: 3.5,
+    detune: 12,
+    lfoRate: 0.08,
+    lfoDepth: 80,
+    lfoWave: 'sine',
+    compression: 0.15,
+    drive: 0,
+    chorus: 0.25,
+    reverb: 0.6,
+    delay: 0.06,
+  },
+
+  // 14) Plucky Lead - short, percussive lead
+  {
+    name: 'Plucky Lead',
+    waveType: 'triangle',
+    waveShape: 0.15,
+    volume: -5,
+    filter: 2600,
+    resonance: 3.4,
+    attack: 0.001,
+    decay: 0.12,
+    release: 0.1,
+    detune: 6,
+    lfoRate: 0.2,
+    lfoDepth: 50,
+    lfoWave: 'sine',
+    compression: 0.25,
+    drive: 0.06,
+    chorus: 0.05,
+    reverb: 0.02,
+    delay: 0.01,
+  },
+
+  // 15) Bell - metallic, chiming
+  {
+    name: 'Bell',
+    waveType: 'triangle',
+    waveShape: 0.45,
+    volume: -6,
+    filter: 6000,
+    resonance: 6.5,
+    attack: 0.001,
+    decay: 1.8,
+    release: 2.0,
+    detune: 14,
+    lfoRate: 0.5,
+    lfoDepth: 150,
+    lfoWave: 'sine',
+    compression: 0.25,
+    drive: 0.02,
+    chorus: 0.02,
+    reverb: 0.12,
+    delay: 0.02,
+  },
+
+  // 16) Retro Pad - lo-fi warm pad
+  {
+    name: 'Retro Pad',
+    waveType: 'sawtooth',
+    waveShape: 0.7,
+    volume: -7,
+    filter: 1100,
+    resonance: 2.2,
+    attack: 0.2,
+    decay: 1.0,
+    release: 1.5,
+    detune: 10,
+    lfoRate: 0.18,
+    lfoDepth: 220,
+    lfoWave: 'sine',
+    compression: 0.25,
+    drive: 0.08,
+    chorus: 0.2,
+    reverb: 0.35,
+    delay: 0.03,
   },
 ]
 

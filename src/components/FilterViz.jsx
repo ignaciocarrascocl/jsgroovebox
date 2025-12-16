@@ -196,20 +196,21 @@ const FilterViz = ({ type = 'lowpass', cutoff = 20000, q = 0.7, bandwidth = 1000
   const baselineY = toYDb(displayMinDb)
   const fillPath = `${path} L ${width} ${baselineY.toFixed(2)} L 0 ${baselineY.toFixed(2)} Z`
 
-  // Fewer, more useful frequency labels for the mini viz (less text)
-  const candidateFreqs = [100, 1000, 10000]
+  // More helpful frequency tick labels
+  const candidateFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
   const freqTicks = candidateFreqs.filter((f) => f >= 20 && f <= 20000)
   const formatHz = (f) => (f >= 1000 ? `${Math.round(f / 1000)}k` : `${f}`)
+  const toXPercent = (f) => (Math.log10(f / 20) / Math.log10(20000 / 20)) * 100
 
   return (
     <div className="filter-viz" aria-hidden="true">
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-        <defs>
-          <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
-          </linearGradient>
-        </defs>
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+         <defs>
+           <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+             <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
+             <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
+           </linearGradient>
+         </defs>
       <rect x="0" y="0" width={width} height={height} fill="url(#g)" rx="6" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
         <g className="grid">
           {[20, 100, 1000, 10000].map((f) => (
@@ -233,19 +234,23 @@ const FilterViz = ({ type = 'lowpass', cutoff = 20000, q = 0.7, bandwidth = 1000
           )
         })() : null}
 
-        {/* freq ticks + labels */}
+        {/* freq ticks (lines only) - labels are rendered as HTML overlay to avoid distortion when SVG stretches */}
         {freqTicks.map((f) => (
-          <g key={f}>
-            <line x1={toX(f)} x2={toX(f)} y1={height - 10} y2={height - 2} stroke="rgba(255,255,255,0.06)" />
-            <text x={toX(f)} y={height - 12} fontSize="8" fill="rgba(255,255,255,0.65)" textAnchor="middle">{formatHz(f)}</text>
-          </g>
+          <line key={f} x1={toX(f)} x2={toX(f)} y1={height - 10} y2={height - 2} stroke="rgba(255,255,255,0.06)" />
         ))}
-
-  {/* Minimal labels for compact UI: only freq ticks shown */}
 
         {/* cutoff marker */}
         <line x1={toX(cutoff)} x2={toX(cutoff)} y1="0" y2={height} stroke="rgba(255,165,0,0.6)" strokeDasharray="4 4" />
       </svg>
+      {/* HTML overlay ticks so text remains crisp (not stretched by SVG scaling) */}
+      <div className="filter-viz__ticks" aria-hidden="true">
+        {freqTicks.map((f) => (
+          <div key={f} className="filter-viz__tick" style={{ left: `${toXPercent(f)}%` }}>{formatHz(f)}</div>
+        ))}
+        {typeof cutoff === 'number' ? (
+          <div className="filter-viz__cutoff" style={{ left: `${toXPercent(Math.max(20, Math.min(20000, cutoff)))}%` }}>{formatHz(Math.round(cutoff))}</div>
+        ) : null}
+      </div>
     </div>
   )
 }

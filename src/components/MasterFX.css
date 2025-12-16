@@ -83,47 +83,10 @@
   text-transform: uppercase;
 }
 
-.masterfx-meterbar {
-  position: relative;
-  height: 12px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.meterbar-bg {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.meterbar-fill {
-  position: absolute;
-  inset: 0;
-  width: 0;
-  background: linear-gradient(90deg, #22c55e 0%, #fbbf24 70%, #ef4444 100%);
-  opacity: 0.85;
-}
-
-.meterbar-markers {
-  position: absolute;
-  inset: 0;
-}
-
-.meterbar-marker {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-
-
 .masterfx-grid {
   display: grid;
-  /* increase columns to accommodate EQ spanning 2 columns while keeping everything on one row */
-  grid-template-columns: repeat(7, minmax(86px, 1fr));
+  /* 4 columns: EQ 3/4, Filter 1/4, then Reverb, Delay, Comp, Volume each 1/4 in next row */
+  grid-template-columns: repeat(4, minmax(86px, 1fr));
   gap: 10px;
 }
 
@@ -153,14 +116,13 @@
   min-height: 128px;
 }
 
-/* Make EQ column span 2 columns (visually 2x wider) */
+/* Make EQ column span 3 columns (3/4 width) */
 .fx-strip.eq {
-  grid-column: span 2;
+  grid-column: span 3;
 }
 
 /* Make compressor strip visually narrow (approx 1/5 of a regular column) */
 .fx-strip.comp {
-  grid-column: span 1;
   justify-self: center;
   /* keep compressor at normal column width but centered; avoid forcing tiny widths */
   width: 100%;
@@ -231,10 +193,10 @@
   padding: 3px 6px;
 }
 
-/* EQ band layout: 3 columns (Low / Mid / High) */
+/* EQ band layout: 5 columns (Low / Low Mid / Mid / High Mid / High) */
 .eq-bands {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   width: 100%;
   align-items: start;
@@ -335,4 +297,25 @@
   .eq-bands {
     grid-template-columns: 1fr;
   }
+}
+
+.reverb-type,
+.delay-type,
+.delay-sync,
+.delay-division,
+.filter-slope,
+.filter-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin: 4px 0;
+}
+
+.delay-type-sync-row {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0;
 }

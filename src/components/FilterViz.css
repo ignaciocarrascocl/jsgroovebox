@@ -4,6 +4,7 @@
   justify-content: center;
   width: 100%;
   padding-top: 6px;
+  position: relative; /* positioning context for overlayed labels */
 }
 
 .filter-viz svg {
@@ -11,7 +12,8 @@
   overflow: visible;
   width: 100%;
   max-width: 100%;
-  height: auto;
+  height: 96px;
+  display: block;
 }
 
 .fx-strip .viz {
@@ -25,6 +27,18 @@
   height: 96px;
   width: 100%;
   max-width: 100%;
+  display: block;
+}
+
+/* Make filter viz background extend to full strip width by negating the .viz padding */
+.fx-strip .viz > .filter-viz svg {
+  width: calc(100% + 12px);
+  margin: 0 -6px;
+}
+
+/* EQ viz should use same svg height as filter viz */
+.fx-strip.eq .viz svg {
+  height: 96px;
 }
 
 /* tall viz modifier for screens that need more vertical space (stereo meter) */
@@ -96,6 +110,33 @@
 
 .filter-viz text {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+/* HTML overlay ticks (keeps text un-distorted even when SVG is stretched) */
+.filter-viz__ticks {
+  position: absolute;
+  left: -6px; /* align with the svg expansion that negates the .viz padding */
+  right: -6px;
+  bottom: 6px;
+  pointer-events: none;
+}
+.filter-viz__tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255,255,255,0.68);
+  white-space: nowrap;
+}
+.filter-viz__cutoff {
+  position: absolute;
+  transform: translateX(-50%);
+  bottom: 22px;
+  font-size: 10px;
+  color: rgba(255,165,0,0.95);
+  background: rgba(0,0,0,0.2);
+  padding: 2px 6px;
+  border-radius: 6px;
+  pointer-events: none;
 }
 
 .filter-viz .grid line {

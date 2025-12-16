@@ -1,10 +1,7 @@
 import Knob from './Knob'
 import MasterSoundVisualizer from './MasterSoundVisualizer'
 import './MasterFX.css'
-import FilterViz from './FilterViz'
-import EQViz from './EQViz'
 import StereoMeter from './StereoMeter'
-import CompressorViz from './CompressorViz'
 
 const MasterFX = ({
   masterParams,
@@ -36,7 +33,6 @@ const MasterFX = ({
     })
   }
 
-  const peakDb = meter?.peakDb ?? -Infinity
   const linToDb = (v) => {
     if (typeof v !== 'number') return '-∞'
     const val = Math.max(1e-8, Math.abs(v))
@@ -50,21 +46,8 @@ const MasterFX = ({
           <div className="masterfx-name">MASTER</div>
           <button className="masterfx-reset" title="Reset master & FX" onClick={() => onResetMaster?.()}>⟲</button>
         </div>
-        <div className="masterfx-meterbar">
-          <div className="meterbar-bg" />
-          <div
-            className="meterbar-fill"
-            style={{
-              width: `${Math.min(100, Math.max(0, ((peakDb + 60) / 60) * 100))}%`,
-            }}
-          />
-          <div className="meterbar-markers">
-            {[-48, -36, -24, -12, -6, 0].map((db) => (
-              <div key={db} className="meterbar-marker" style={{ left: `${((db + 60) / 60) * 100}%` }} />
-            ))}
-          </div>
-        </div>
-  <div className="masterfx-sub">FX</div>
+        {/* master meter removed */}
+        <div className="masterfx-sub">FX</div>
       </div>
 
       <MasterSoundVisualizer
@@ -79,13 +62,7 @@ const MasterFX = ({
 
   <div className={`fx-strip eq ${activeResetTarget === 'eq' ? 'just-reset' : ''}`}>
           <div className="fx-strip-title">EQ <button className="fx-strip-reset" title="Reset EQ" onClick={() => onResetEQ?.()}>⟲</button></div>
-          <div className="viz">
-            <EQViz
-              low={{ f: masterParams?.eqLowFreq ?? 100, g: masterParams?.eqLowGain ?? 0, q: masterParams?.eqLowQ ?? 1 }}
-              mid={{ f: masterParams?.eqMidFreq ?? 1000, g: masterParams?.eqMidGain ?? 0, q: masterParams?.eqMidQ ?? 1 }}
-              high={{ f: masterParams?.eqHighFreq ?? 8000, g: masterParams?.eqHighGain ?? 0, q: masterParams?.eqHighQ ?? 1 }}
-            />
-          </div>
+          {/* visualization removed */}
           <div className="eq-bands">
             <div className="eq-band">
               <div className="eq-band-title">Low</div>
@@ -127,6 +104,45 @@ const MasterFX = ({
             </div>
 
             <div className="eq-band">
+              <div className="eq-band-title">Low Mid</div>
+              <div className="knob-grid">
+                <Knob
+                  label="Freq"
+                  unit="Hz"
+                  tooltip="Center frequency for low mid band"
+                  value={masterParams?.eqLowMidFreq ?? 300}
+                  min={100}
+                  max={1000}
+                  onChange={(v) => handleMaster('eqLowMidFreq', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+                <Knob
+                  label="Gain"
+                  unit="dB"
+                  tooltip="Gain for low mid band"
+                  value={masterParams?.eqLowMidGain ?? 0}
+                  min={-12}
+                  max={12}
+                  onChange={(v) => handleMaster('eqLowMidGain', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+                <Knob
+                  label="Q"
+                  unit="Q"
+                  tooltip="Bandwidth of the low mid band"
+                  value={masterParams?.eqLowMidQ ?? 1}
+                  min={0.1}
+                  max={10}
+                  onChange={(v) => handleMaster('eqLowMidQ', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+              </div>
+            </div>
+
+            <div className="eq-band">
               <div className="eq-band-title">Mid</div>
               <div className="knob-grid">
                 <Knob
@@ -159,6 +175,45 @@ const MasterFX = ({
                   min={0.1}
                   max={10}
                   onChange={(v) => handleMaster('eqMidQ', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+              </div>
+            </div>
+
+            <div className="eq-band">
+              <div className="eq-band-title">High Mid</div>
+              <div className="knob-grid">
+                <Knob
+                  label="Freq"
+                  unit="Hz"
+                  tooltip="Center frequency for high mid band"
+                  value={masterParams?.eqHighMidFreq ?? 3000}
+                  min={1000}
+                  max={8000}
+                  onChange={(v) => handleMaster('eqHighMidFreq', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+                <Knob
+                  label="Gain"
+                  unit="dB"
+                  tooltip="Gain for high mid band"
+                  value={masterParams?.eqHighMidGain ?? 0}
+                  min={-12}
+                  max={12}
+                  onChange={(v) => handleMaster('eqHighMidGain', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+                <Knob
+                  label="Q"
+                  unit="Q"
+                  tooltip="Bandwidth of the high mid band"
+                  value={masterParams?.eqHighMidQ ?? 1}
+                  min={0.1}
+                  max={10}
+                  onChange={(v) => handleMaster('eqHighMidQ', v)}
                   color="#4ecdc4"
                   size={44}
                 />
@@ -208,15 +263,7 @@ const MasterFX = ({
         </div>
   <div className={`fx-strip ${activeResetTarget === 'filter' ? 'just-reset' : ''}`}>
           <div className="fx-strip-title">FILTER <button className="fx-strip-reset" title="Reset filter" onClick={() => onResetFilter?.()}>⟲</button></div>
-          <div className="viz">
-            <FilterViz
-              type={['lowpass', 'highpass', 'bandpass', 'notch'][masterParams?.filterType ?? 0]}
-              cutoff={masterParams?.filterCutoff}
-              q={masterParams?.filterReso}
-              bandwidth={masterParams?.filterBandwidth}
-              slope={masterParams?.filterSlope}
-            />
-          </div>
+          {/* filter visualization removed */}
           <div className="knob-grid">
             <Knob
               label="Cutoff"
@@ -316,41 +363,6 @@ const MasterFX = ({
             <span className={`fx-led ${((function(v){ if (v === undefined) return false; if (Math.abs(v) <= 2) return Math.abs(v) > 1e-3; return v > -60; })(meter?.reverbVal)) ? 'on' : ''}`}></span>
             <span className="fx-strip-in">In: {linToDb(meter?.reverbVal)}</span>
           </div>
-          <Knob
-            label="Vol"
-            value={busParams?.reverb?.wet ?? 0.2}
-            min={0}
-            max={0.9}
-            onChange={(v) => handleBus('reverb', 'wet', v)}
-            color="#60a5fa"
-          />
-          <Knob
-            label="Decay"
-            value={busParams?.reverb?.decay ?? 1.8}
-            min={0.2}
-            max={8}
-            onChange={(v) => handleBus('reverb', 'decay', v)}
-            color="#60a5fa"
-          />
-          <Knob
-            label="Pre"
-            value={busParams?.reverb?.preDelay ?? 0.01}
-            min={0}
-            max={0.2}
-            onChange={(v) => handleBus('reverb', 'preDelay', v)}
-            color="#60a5fa"
-          />
-          <Knob
-            label="Tone"
-            unit="Hz"
-            tooltip="Brightness / damping (lowpass on reverb output)"
-            value={busParams?.reverb?.tone ?? 8000}
-            min={500}
-            max={20000}
-            onChange={(v) => handleBus('reverb', 'tone', v)}
-            color="#60a5fa"
-          />
-
           <div className="reverb-type">
             <div className="filter-type-label">Type</div>
             <div className="segmented" role="tablist" aria-label="Reverb type">
@@ -364,11 +376,47 @@ const MasterFX = ({
                     title={t}
                     aria-pressed={(busParams?.reverb?.type ?? 'hall') === key}
                   >
-                    {t.slice(0,4)}
+                    {t}
                   </button>
                 )
               })}
             </div>
+          </div>
+          <div className="knob-grid">
+            <Knob
+              label="Vol"
+              value={busParams?.reverb?.wet ?? 0.2}
+              min={0}
+              max={0.9}
+              onChange={(v) => handleBus('reverb', 'wet', v)}
+              color="#60a5fa"
+            />
+            <Knob
+              label="Decay"
+              value={busParams?.reverb?.decay ?? 1.8}
+              min={0.2}
+              max={8}
+              onChange={(v) => handleBus('reverb', 'decay', v)}
+              color="#60a5fa"
+            />
+            <Knob
+              label="Pre"
+              value={busParams?.reverb?.preDelay ?? 0.01}
+              min={0}
+              max={0.2}
+              onChange={(v) => handleBus('reverb', 'preDelay', v)}
+              color="#60a5fa"
+            />
+            <Knob
+              label="Tone"
+              unit="Hz"
+              tooltip="Brightness / damping (lowpass on reverb output)"
+              value={busParams?.reverb?.tone ?? 8000}
+              min={500}
+              max={20000}
+              onChange={(v) => handleBus('reverb', 'tone', v)}
+              color="#60a5fa"
+            />
           </div>
         </div>
   <div className={`fx-strip ${activeResetTarget === 'delay' ? 'just-reset' : ''}`}>
@@ -377,63 +425,75 @@ const MasterFX = ({
             <span className={`fx-led ${((function(v){ if (v === undefined) return false; if (Math.abs(v) <= 2) return Math.abs(v) > 1e-3; return v > -60; })(meter?.delayVal)) ? 'on' : ''}`}></span>
             <span className="fx-strip-in">In: {linToDb(meter?.delayVal)}</span>
           </div>
-          <Knob
-            label="Vol"
-            value={busParams?.delay?.wet ?? 0.15}
-            min={0}
-            max={0.9}
-            onChange={(v) => handleBus('delay', 'wet', v)}
-            color="#34d399"
-          />
-          <Knob
-            label="FB"
-            value={busParams?.delay?.feedback ?? 0.25}
-            min={0}
-            max={0.85}
-            onChange={(v) => handleBus('delay', 'feedback', v)}
-            color="#34d399"
-          />
-          <Knob
-            label="Time"
-            value={busParams?.delay?.time ?? 0.25}
-            min={0.05}
-            max={0.75}
-            onChange={(v) => handleBus('delay', 'time', v)}
-            color="#34d399"
-          />
-          <div className="delay-type">
-            <div className="filter-type-label">Type</div>
-            <div className="segmented" role="tablist" aria-label="Delay type">
-              {[["Feedback","feedback"],["PingPong","pingpong"]].map(([label, key]) => (
-                <button
-                  key={key}
-                  className={"segmented-btn" + ((busParams?.delay?.type ?? 'feedback') === key ? ' active' : '')}
-                  onClick={() => handleBus('delay', 'type', key)}
-                  title={label}
-                  aria-pressed={(busParams?.delay?.type ?? 'feedback') === key}
-                >
-                  {label === 'PingPong' ? 'PP' : label[0]}
-                </button>
-              ))}
+          <div className="delay-type-sync-row">
+            <div className="delay-type">
+              <div className="filter-type-label">Type</div>
+              <div className="segmented" role="tablist" aria-label="Delay type">
+                {[["Feedback","feedback"],["PingPong","pingpong"]].map(([label, key]) => (
+                  <button
+                    key={key}
+                    className={"segmented-btn" + ((busParams?.delay?.type ?? 'feedback') === key ? ' active' : '')}
+                    onClick={() => handleBus('delay', 'type', key)}
+                    title={label}
+                    aria-pressed={(busParams?.delay?.type ?? 'feedback') === key}
+                  >
+                    {label === 'PingPong' ? 'PP' : label[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="delay-sync">
+              <div className="filter-type-label">Sync</div>
+              <div className="segmented" role="tablist" aria-label="Delay sync">
+                {[['Free', false], ['Sync', true]].map(([label, val]) => (
+                  <button
+                    key={label}
+                    className={"segmented-btn" + ((busParams?.delay?.sync ?? false) === val ? ' active' : '')}
+                    onClick={() => handleBus('delay', 'sync', val)}
+                    title={label}
+                    aria-pressed={(busParams?.delay?.sync ?? false) === val}
+                  >{label[0]}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-
-          <div className="delay-sync">
-            <div className="filter-type-label">Sync</div>
-            <div className="segmented" role="tablist" aria-label="Delay sync">
-              {[['Free', false], ['Sync', true]].map(([label, val]) => (
-                <button
-                  key={label}
-                  className={"segmented-btn" + ((busParams?.delay?.sync ?? false) === val ? ' active' : '')}
-                  onClick={() => handleBus('delay', 'sync', val)}
-                  title={label}
-                  aria-pressed={(busParams?.delay?.sync ?? false) === val}
-                >{label[0]}
-                </button>
-              ))}
-            </div>
+          <div className="knob-grid">
+            <Knob
+              label="Vol"
+              value={busParams?.delay?.wet ?? 0.15}
+              min={0}
+              max={0.9}
+              onChange={(v) => handleBus('delay', 'wet', v)}
+              color="#34d399"
+            />
+            <Knob
+              label="FB"
+              value={busParams?.delay?.feedback ?? 0.25}
+              min={0}
+              max={0.85}
+              onChange={(v) => handleBus('delay', 'feedback', v)}
+              color="#34d399"
+            />
+            <Knob
+              label="Time"
+              value={busParams?.delay?.time ?? 0.25}
+              min={0.05}
+              max={0.75}
+              onChange={(v) => handleBus('delay', 'time', v)}
+              color="#34d399"
+            />
+            <Knob
+              label="Filter"
+              unit="Hz"
+              tooltip="Lowpass on delay repeats"
+              value={busParams?.delay?.filter ?? 8000}
+              min={200}
+              max={12000}
+              onChange={(v) => handleBus('delay', 'filter', v)}
+              color="#34d399"
+            />
           </div>
-
           {busParams?.delay?.sync ? (
             <div className="delay-division">
               <div className="filter-type-label">Division</div>
@@ -451,27 +511,10 @@ const MasterFX = ({
               </div>
             </div>
           ) : null}
-
-          <Knob
-            label="Filter"
-            unit="Hz"
-            tooltip="Lowpass on delay repeats"
-            value={busParams?.delay?.filter ?? 8000}
-            min={200}
-            max={12000}
-            onChange={(v) => handleBus('delay', 'filter', v)}
-            color="#34d399"
-          />
         </div>
     <div className={`fx-strip comp ${activeResetTarget === 'comp' ? 'just-reset' : ''}`}>
           <div className="fx-strip-title">COMP <button className="fx-strip-reset" title="Reset compressor" onClick={() => onResetComp?.()}>⟲</button></div>
-          <div className="viz">
-            <CompressorViz
-              threshold={masterParams?.compThreshold}
-              ratio={masterParams?.compRatio}
-              makeup={masterParams?.compMakeup}
-            />
-          </div>
+          {/* compressor visualization removed */}
           <div className="knob-grid">
             {/* Threshold: level where compression starts (dB) */}
             <Knob
