@@ -122,7 +122,8 @@
 
 .masterfx-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(86px, 1fr));
+  /* increase columns to accommodate EQ spanning 2 columns while keeping everything on one row */
+  grid-template-columns: repeat(7, minmax(86px, 1fr));
   gap: 10px;
 }
 
@@ -150,6 +151,20 @@
   justify-content: flex-start;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   min-height: 128px;
+}
+
+/* Make EQ column span 2 columns (visually 2x wider) */
+.fx-strip.eq {
+  grid-column: span 2;
+}
+
+/* Make compressor strip visually narrow (approx 1/5 of a regular column) */
+.fx-strip.comp {
+  grid-column: span 1;
+  justify-self: center;
+  /* keep compressor at normal column width but centered; avoid forcing tiny widths */
+  width: 100%;
+  max-width: none;
 }
 
 .fx-strip-title {
@@ -186,6 +201,25 @@
 .fx-strip .knob-wrapper {
   margin: 2px 0;
 }
+
+/* Grid layout for knobs: 2 per row */
+.knob-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+  align-items: start;
+  justify-items: center;
+}
+.knob-grid .knob-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.knob-grid.full {
+  grid-column: 1 / -1;
+}
+.full { width: 100%; display:flex; justify-content:center; }
 
 .fx-strip .knob-label {
   font-size: 8px;

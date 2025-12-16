@@ -78,8 +78,27 @@ const DEFAULT_MASTER_PARAMS = {
 }
 
 const DEFAULT_BUS_PARAMS = {
-  reverb: { wet: 0.2, decay: 1.8 },
-  delay: { wet: 0.15, feedback: 0.25, time: 0.25 },
+  reverb: {
+    wet: 0.2,
+    decay: 1.8,
+    preDelay: 0.01,
+    // type presets: 'hall' | 'plate' | 'room'
+    type: 'hall',
+    // tone shaping (lowpass cutoff applied to reverb output)
+    tone: 8000,
+  },
+  delay: {
+    wet: 0.15,
+    feedback: 0.25,
+    time: 0.25,
+    // type: 'feedback' | 'pingpong'
+    type: 'feedback',
+    // if sync is true, `division` is used (e.g. '4n','8n','8n.')
+    sync: false,
+    division: '8n',
+    // filter cutoff applied to delay repeats
+    filter: 8000,
+  },
 }
 
 function App() {

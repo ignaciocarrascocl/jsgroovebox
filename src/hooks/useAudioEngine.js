@@ -279,7 +279,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     outGain: 0,
     pan: 0,
   })
-  const busParamsRef = useRef({ reverb: { wet: 0.2, decay: 1.8, preDelay: 0.01 }, delay: { wet: 0.15, feedback: 0.25, time: 0.25 } })
+  const busParamsRef = useRef({
+    reverb: { wet: 0.2, decay: 1.8, preDelay: 0.01, type: 'hall', tone: 8000 },
+    delay: { wet: 0.15, feedback: 0.25, time: 0.25, type: 'feedback', sync: false, division: '8n', filter: 8000 },
+  })
 
   // Keep refs in sync with props
   useEffect(() => {
@@ -436,9 +439,16 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       const mixer = mixerRef.current
       if (!mixer?.reverb || !mixer?.delay) return
 
+      // Reverb: decay, preDelay, tone (lowpass on reverb output) and wet
       mixer.reverb.decay = clamp(params?.reverb?.decay ?? 1.8, 0.2, 12)
       if (mixer.reverb.preDelay !== undefined) {
         mixer.reverb.preDelay = clamp(params?.reverb?.preDelay ?? 0.01, 0, 1)
+      }
+      // Tone/damping applied via lowpass filter after reverb
+      if (mixer.reverbFilter && typeof mixer.reverbFilter.frequency?.rampTo === 'function') {
+        const typeDefaultTone = (params?.reverb?.type === 'plate') ? 12000 : ((params?.reverb?.type === 'room') ? 6000 : 8000)
+        const toneHz = clamp(params?.reverb?.tone ?? typeDefaultTone, 200, 20000)
+        mixer.reverbFilter.frequency.rampTo(toneHz, 0.1)
       }
       try {
         if (typeof mixer.reverb.generate === 'function') mixer.reverb.generate()
@@ -447,9 +457,48 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       }
       mixer.reverbReturn.gain.rampTo(clamp(params?.reverb?.wet ?? 0.2, 0, 1), 0.1)
 
-      mixer.delay.delayTime.rampTo(clamp(params?.delay?.time ?? 0.25, 0.01, 2), 0.1)
-      mixer.delay.feedback.rampTo(clamp(params?.delay?.feedback ?? 0.25, 0, 0.95), 0.1)
+      // Delay: switch type if needed, apply time (sync/free), feedback, wet and filter
+      const desiredType = params?.delay?.type ?? 'feedback'
+      const chosenDelay = desiredType === 'pingpong' ? mixer.pingPongDelay : mixer.feedbackDelay
+      if (mixer.delay !== chosenDelay) {
+        try {
+          if (mixer.delay && mixer.delay.disconnect) mixer.delay.disconnect()
+        } catch {
+          // ignore
+        }
+        mixer.delay = chosenDelay
+        try {
+          mixer.delay.chain(mixer.delayFilter, mixer.delayReturn)
+        } catch {
+          // ignore
+        }
+        // Reconnect track sends to new delay node
+        Object.values(effectsRef.current).forEach((fx) => {
+          try {
+            if (fx?.delaySend && fx.delaySend.connect) fx.delaySend.connect(mixer.delay)
+          } catch {
+            // ignore
+          }
+        })
+      }
+
+      // Delay time: sync vs free
+      if (params?.delay?.sync) {
+        try {
+          const secs = Tone.Time(params.delay.division ?? '8n').toSeconds()
+          if (typeof mixer.delay.delayTime?.rampTo === 'function') mixer.delay.delayTime.rampTo(clamp(secs, 0.01, 4), 0.1)
+        } catch {
+          // ignore invalid division
+        }
+      } else {
+        if (typeof mixer.delay.delayTime?.rampTo === 'function') mixer.delay.delayTime.rampTo(clamp(params?.delay?.time ?? 0.25, 0.01, 2), 0.1)
+      }
+
+      if (typeof mixer.delay.feedback?.rampTo === 'function') mixer.delay.feedback.rampTo(clamp(params?.delay?.feedback ?? 0.25, 0, 0.95), 0.1)
       mixer.delayReturn.gain.rampTo(clamp(params?.delay?.wet ?? 0.15, 0, 1), 0.1)
+      if (mixer.delayFilter && typeof mixer.delayFilter.frequency?.rampTo === 'function') {
+        mixer.delayFilter.frequency.rampTo(clamp(params?.delay?.filter ?? 8000, 200, 20000), 0.1)
+      }
     } catch {
       // best-effort; ignore if mixer not ready
     }
@@ -491,8 +540,16 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const existingMixer = mixerRef.current || {}
   const reverb = existingMixer.reverb || new Tone.Reverb({ decay: busParamsRef.current.reverb?.decay ?? 1.8, wet: 1 })
   const reverbReturn = existingMixer.reverbReturn || new Tone.Gain(1)
-  const delay = existingMixer.delay || new Tone.FeedbackDelay(busParamsRef.current.delay?.time ?? 0.25, busParamsRef.current.delay?.feedback ?? 0.25)
-  if (!existingMixer.delay && delay?.wet?.rampTo) delay.wet.rampTo(1, 0)
+  const reverbFilter = existingMixer.reverbFilter || new Tone.Filter(busParamsRef.current.reverb?.tone ?? 8000, 'lowpass')
+
+  // Create both delay types and a filter for repeats; we'll switch between them when params change.
+  const feedbackDelay = existingMixer.feedbackDelay || new Tone.FeedbackDelay(busParamsRef.current.delay?.time ?? 0.25, busParamsRef.current.delay?.feedback ?? 0.25)
+  const pingPongDelay = existingMixer.pingPongDelay || new Tone.PingPongDelay(busParamsRef.current.delay?.time ?? 0.25, 0.5)
+  const delayFilter = existingMixer.delayFilter || new Tone.Filter(busParamsRef.current.delay?.filter ?? 8000, 'lowpass')
+  // Active delay node defaults to requested type (or feedback)
+  const delay = existingMixer.delay || (busParamsRef.current.delay?.type === 'pingpong' ? pingPongDelay : feedbackDelay)
+  if (!existingMixer.feedbackDelay && feedbackDelay?.wet?.rampTo) feedbackDelay.wet.rampTo(1, 0)
+  if (!existingMixer.pingPongDelay && pingPongDelay?.wet?.rampTo) pingPongDelay.wet.rampTo(1, 0)
   const delayReturn = existingMixer.delayReturn || new Tone.Gain(1)
 
     // Analyzer + meter
@@ -530,8 +587,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
 
   // Returns feed into master input (post-track FX)
   // Only chain if we're using a newly created bus. If reusing, assume it's already wired.
-  if (!existingMixer.reverb) reverb.chain(reverbReturn, masterInput)
-  if (!existingMixer.delay) delay.chain(delayReturn, masterInput)
+  if (!existingMixer.reverb) reverb.chain(reverbFilter, reverbReturn, masterInput)
+  if (!existingMixer.delay) delay.chain(delayFilter, delayReturn, masterInput)
 
   // Tap FX returns to meters for debugging/visualization (non-critical)
   try {
@@ -551,11 +608,15 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   masterEQMid,
   masterEQHigh,
   masterFilterStages,
-      masterGain,
-      reverb,
-      reverbReturn,
-      delay,
-      delayReturn,
+  masterGain,
+  reverb,
+  reverbFilter,
+  reverbReturn,
+  feedbackDelay,
+  pingPongDelay,
+  delayFilter,
+  delay,
+  delayReturn,
   waveformAnalyser,
   reverbMeter,
   delayMeter,
@@ -870,22 +931,61 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     const mixer = mixerRef.current
     if (!mixer?.reverb || !mixer?.delay) return
 
+    // Reverb: decay/preDelay and tone shaping
     mixer.reverb.decay = clamp(params?.reverb?.decay ?? 1.8, 0.2, 12)
     if (mixer.reverb.preDelay !== undefined) {
       mixer.reverb.preDelay = clamp(params?.reverb?.preDelay ?? 0.01, 0, 1)
     }
-    // Some Reverb implementations regenerate their IR when decay changes.
-    // Call generate() if available so the tail updates immediately.
     try {
       if (typeof mixer.reverb.generate === 'function') mixer.reverb.generate()
     } catch {
       // ignore
     }
+    // Tone/damping via lowpass after reverb
+    if (mixer.reverbFilter && typeof mixer.reverbFilter.frequency?.rampTo === 'function') {
+      const typeDefaultTone = (params?.reverb?.type === 'plate') ? 12000 : ((params?.reverb?.type === 'room') ? 6000 : 8000)
+      const toneHz = clamp(params?.reverb?.tone ?? typeDefaultTone, 200, 20000)
+      mixer.reverbFilter.frequency.rampTo(toneHz, 0.1)
+    }
     mixer.reverbReturn.gain.rampTo(clamp(params?.reverb?.wet ?? 0.2, 0, 1), 0.1)
 
-    mixer.delay.delayTime.rampTo(clamp(params?.delay?.time ?? 0.25, 0.01, 2), 0.1)
-    mixer.delay.feedback.rampTo(clamp(params?.delay?.feedback ?? 0.25, 0, 0.95), 0.1)
+    // Delay: ensure correct type and apply time (sync/free), feedback, filter and wet
+    const desiredType = params?.delay?.type ?? 'feedback'
+    const chosenDelay = desiredType === 'pingpong' ? mixer.pingPongDelay : mixer.feedbackDelay
+    if (mixer.delay !== chosenDelay) {
+      try {
+        if (mixer.delay && mixer.delay.disconnect) mixer.delay.disconnect()
+      } catch {
+        // ignore
+      }
+      mixer.delay = chosenDelay
+      try {
+        mixer.delay.chain(mixer.delayFilter, mixer.delayReturn)
+      } catch {
+        // ignore
+      }
+      Object.values(effectsRef.current).forEach((fx) => {
+        try {
+          if (fx?.delaySend && fx.delaySend.connect) fx.delaySend.connect(mixer.delay)
+        } catch {
+          // ignore
+        }
+      })
+    }
+
+    if (params?.delay?.sync) {
+      try {
+        const secs = Tone.Time(params.delay.division ?? '8n').toSeconds()
+        if (typeof mixer.delay.delayTime?.rampTo === 'function') mixer.delay.delayTime.rampTo(clamp(secs, 0.01, 4), 0.1)
+      } catch {
+        // ignore
+      }
+    } else {
+      if (typeof mixer.delay.delayTime?.rampTo === 'function') mixer.delay.delayTime.rampTo(clamp(params?.delay?.time ?? 0.25, 0.01, 2), 0.1)
+    }
+    if (typeof mixer.delay.feedback?.rampTo === 'function') mixer.delay.feedback.rampTo(clamp(params?.delay?.feedback ?? 0.25, 0, 0.95), 0.1)
     mixer.delayReturn.gain.rampTo(clamp(params?.delay?.wet ?? 0.15, 0, 1), 0.1)
+    if (mixer.delayFilter && typeof mixer.delayFilter.frequency?.rampTo === 'function') mixer.delayFilter.frequency.rampTo(clamp(params?.delay?.filter ?? 8000, 200, 20000), 0.1)
   }, [toneStarted])
 
   // Meter + waveform polling
