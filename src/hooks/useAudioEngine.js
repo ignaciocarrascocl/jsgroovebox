@@ -4,6 +4,7 @@ import { PATTERNS } from '../constants/patterns'
 import { BASS_PATTERNS, BASS_TOTAL_STEPS } from '../constants/bass'
 import { CHORD_PATTERNS, CHORD_TOTAL_STEPS } from '../constants/chords'
 import { CHORD_PROGRESSIONS } from '../constants/song'
+import { ARP_PATTERNS, ARP_TOTAL_STEPS } from '../constants/arp'
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
@@ -164,7 +165,7 @@ const DEFAULT_TRACK_PARAMS = {
   9: { volume: -6, pitch: 0, attack: 0.003, release: 0.15, filter: 4000, reverb: 0.2, delay: 0, compression: 0.5, swing: 0 },
 }
 
-export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = DEFAULT_TRACK_PARAMS, mutedTracks = {}, soloTracks = {}, bassParams = {}, chordParams = {}, songSettings = {}) => {
+export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = DEFAULT_TRACK_PARAMS, mutedTracks = {}, soloTracks = {}, bassParams = {}, chordParams = {}, arpParams = {}, songSettings = {}) => {
   const [toneStarted, setToneStarted] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   // Steps update at 16n. Keeping them in React state forces a full App re-render
@@ -173,11 +174,13 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const currentStepRef = useRef(0)
   const currentBassStepRef = useRef(0)
   const currentChordStepRef = useRef(0)
+  const currentArpStepRef = useRef(0)
   const [uiStepPulse, setUiStepPulse] = useState(0)
   const [bpm, setBpm] = useState(120)
   const [activeTracks, setActiveTracks] = useState({})
   const [masterMeter, setMasterMeter] = useState({ waveform: [], peakDb: -Infinity, rmsDb: -Infinity })
   const masterNodeRef = useRef(null)
+  const arpStepRef = useRef(0) // Track 64-step arp progression
   const [perfStats, setPerfStats] = useState({ fps: undefined, usedJSHeapSizeMb: undefined })
   const transportClearEventIdRef = useRef(null)
   
@@ -239,6 +242,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const mutedTracksRef = useRef(mutedTracks)
   const soloTracksRef = useRef(soloTracks)
   const bassParamsRef = useRef(bassParams)
+  const arpParamsRef = useRef(arpParams)
   const chordParamsRef = useRef(chordParams)
   const songSettingsRef = useRef(songSettings)
 
@@ -308,6 +312,10 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   useEffect(() => {
     bassParamsRef.current = bassParams
   }, [bassParams])
+
+  useEffect(() => {
+    arpParamsRef.current = arpParams
+  }, [arpParams])
 
   useEffect(() => {
     chordParamsRef.current = chordParams
@@ -685,6 +693,15 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         delaySend: new Tone.Gain(0),
         reverbSend: new Tone.Gain(0),
       },
+      arp: {
+        compressor: new Tone.Compressor(-30, 3),
+        filter: new Tone.Filter(1200, 'lowpass'),
+        distortion: new Tone.Distortion(0),
+        chorus: new Tone.Chorus(1.5, 3.5, 0.5),
+        lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
+        delaySend: new Tone.Gain(0),
+        reverbSend: new Tone.Gain(0),
+      },
     }
 
     // Wire track sends to shared buses (guarding in case buses are missing)
@@ -854,6 +871,34 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       effectsRef.current.chords.filter.connect(effectsRef.current.chords.reverbSend)
     }
     synthsRef.current.chords.volume.value = -10
+
+    // Arpeggio Synth
+    effectsRef.current.arp.filter.Q.value = 2
+    // Connect LFO to filter frequency
+    effectsRef.current.arp.lfo.connect(effectsRef.current.arp.filter.frequency)
+    effectsRef.current.arp.lfo.start()
+    // Start chorus internal LFO if available
+    if (effectsRef.current.arp.chorus && typeof effectsRef.current.arp.chorus.start === 'function') {
+      effectsRef.current.arp.chorus.start()
+    }
+
+    synthsRef.current.arp = new Tone.MonoSynth({
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.005, decay: 0.08, sustain: 0.1, release: 0.1 },
+      filterEnvelope: { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.05, baseFrequency: 400, octaves: 2 }
+    })
+    synthsRef.current.arp.chain(
+      effectsRef.current.arp.compressor,
+      effectsRef.current.arp.distortion,
+      effectsRef.current.arp.filter,
+      effectsRef.current.arp.chorus,
+      mixerRef.current.masterInput
+    )
+    if (effectsRef.current.arp?.filter) {
+      effectsRef.current.arp.filter.connect(effectsRef.current.arp.delaySend)
+      effectsRef.current.arp.filter.connect(effectsRef.current.arp.reverbSend)
+    }
+    synthsRef.current.arp.volume.value = -6
 
     // Capture refs for cleanup
     const synths = synthsRef.current
@@ -1104,10 +1149,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     if (effectsRef.current.kick?.filter) {
   effectsRef.current.kick.filter.frequency.linearRampTo(trackParams[1]?.filter ?? 800, 0.1)
     }
-    if (effectsRef.current.kick?.delay) {
-      // (deprecated)
-    }
-  if (effectsRef.current.kick?.delaySend) effectsRef.current.kick.delaySend.gain.rampTo(clamp(trackParams[1]?.delay ?? 0, 0, 1), 0.1)
+    if (effectsRef.current.kick?.delaySend) effectsRef.current.kick.delaySend.gain.rampTo(clamp(trackParams[1]?.delay ?? 0, 0, 1), 0.1)
   if (effectsRef.current.kick?.reverbSend) effectsRef.current.kick.reverbSend.gain.rampTo(clamp(trackParams[1]?.reverb ?? 0, 0, 1), 0.1)
 
     // Update snare
@@ -1295,6 +1337,74 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   if (effectsRef.current.chords?.reverbSend) effectsRef.current.chords.reverbSend.gain.rampTo(clamp(chordParams[7]?.reverb ?? 0.2, 0, 1), 0.1)
   }, [chordParams, toneStarted])
 
+  // Update arp parameters in real-time
+  useEffect(() => {
+    if (!toneStarted) return
+
+    if (synthsRef.current.arp) {
+      synthsRef.current.arp.volume.rampTo(arpParams[8]?.volume ?? -6, 0.1)
+
+      // Update oscillator type
+      const waveType = arpParams[8]?.waveType ?? 'sawtooth'
+      if (synthsRef.current.arp.oscillator.type !== waveType) {
+        synthsRef.current.arp.oscillator.type = waveType
+      }
+
+      // Update detune
+      synthsRef.current.arp.detune.linearRampTo(arpParams[8]?.detune ?? 0, 0.1)
+
+      // Update envelope
+      synthsRef.current.arp.envelope.attack = arpParams[8]?.attack ?? 0.005
+      synthsRef.current.arp.envelope.decay = arpParams[8]?.decay ?? 0.08
+      synthsRef.current.arp.envelope.sustain = 0.1
+      synthsRef.current.arp.envelope.release = arpParams[8]?.release ?? 0.1
+    }
+
+    if (effectsRef.current.arp?.filter) {
+      effectsRef.current.arp.filter.frequency.linearRampTo(arpParams[8]?.filter ?? 1200, 0.1)
+      effectsRef.current.arp.filter.Q.linearRampTo(arpParams[8]?.resonance ?? 1, 0.1)
+    }
+
+    // Distortion (drive)
+    if (effectsRef.current.arp?.distortion) {
+      try {
+        if (typeof effectsRef.current.arp.distortion.distortion?.rampTo === 'function') {
+          effectsRef.current.arp.distortion.distortion.rampTo(arpParams[8]?.drive ?? 0, 0.1)
+        } else {
+          effectsRef.current.arp.distortion.distortion = arpParams[8]?.drive ?? 0
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Chorus wet amount
+    if (effectsRef.current.arp?.chorus) {
+      try {
+        if (typeof effectsRef.current.arp.chorus.wet?.rampTo === 'function') {
+          effectsRef.current.arp.chorus.wet.rampTo(clamp(arpParams[8]?.chorus ?? 0, 0, 1), 0.1)
+        } else if (effectsRef.current.arp.chorus.wet) {
+          effectsRef.current.arp.chorus.wet.value = clamp(arpParams[8]?.chorus ?? 0, 0, 1)
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (effectsRef.current.arp?.lfo) {
+      const lfoRate = arpParams[8]?.lfoRate ?? 0
+      const lfoDepth = arpParams[8]?.lfoDepth ?? 0
+      const filterFreq = arpParams[8]?.filter ?? 1200
+      effectsRef.current.arp.lfo.frequency.linearRampTo(lfoRate, 0.1)
+      effectsRef.current.arp.lfo.min = Math.max(20, filterFreq - lfoDepth)
+      effectsRef.current.arp.lfo.max = Math.min(20000, filterFreq + lfoDepth)
+    }
+
+    applyCompressionAmount(effectsRef.current.arp?.compressor, arpParams[8]?.compression)
+    if (effectsRef.current.arp?.delaySend) effectsRef.current.arp.delaySend.gain.rampTo(clamp(arpParams[8]?.delay ?? 0, 0, 1), 0.1)
+    if (effectsRef.current.arp?.reverbSend) effectsRef.current.arp.reverbSend.gain.rampTo(clamp(arpParams[8]?.reverb ?? 0, 0, 1), 0.1)
+  }, [arpParams, toneStarted])
+
   // Update BPM
   useEffect(() => {
     Tone.getTransport().bpm.value = bpm
@@ -1445,6 +1555,31 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
           }
         }
         
+        // Arp synth - 64-step progression (4 bars x 16 steps)
+        const arpPatternIndex = currentSelectedPatterns[8] ?? 0
+        const arpPattern = currentCustomPatterns[8] || ARP_PATTERNS[arpPatternIndex]?.pattern || []
+
+        const arpStep = arpStepRef.current
+        arpStepRef.current = (arpStep + 1) % ARP_TOTAL_STEPS
+  currentArpStepRef.current = arpStep
+
+        // Determine which bar we're in (0-3) based on the 64-step cycle
+        const arpBarIndex = Math.floor(arpStep / 16)
+        const arpChordDegree = bassProgression[arpBarIndex]
+
+        // Get pattern step (patterns are 16 steps, repeat each bar)
+        const arpPatternStep = arpStep % 16
+        const arpNoteType = arpPattern[arpPatternStep]
+
+        if (arpNoteType > 0 && shouldTrackPlay(8)) {
+          const arpNotes = getChordNotes(bassKey, arpChordDegree, 1, bassMode, 4)
+          if (arpNotes) {
+            const note = arpNotes[0]
+            synthsRef.current.arp?.triggerAttackRelease(note, '16n', time)
+            activeThisStep[8] = true
+          }
+        }
+        
         // Update active tracks once per step with all active tracks
         if (Object.keys(activeThisStep).length > 0) {
           setActiveTracks(activeThisStep)
@@ -1498,9 +1633,11 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   currentStepRef.current = 0
   currentBassStepRef.current = 0
   currentChordStepRef.current = 0
+  currentArpStepRef.current = 0
   setUiStepPulse((p) => (p + 1) % 1000000)
       bassStepRef.current = 0
       chordStepRef.current = 0
+      arpStepRef.current = 0
     } else {
       const transport = Tone.getTransport()
 
@@ -1516,9 +1653,11 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       transport.position = 0
       bassStepRef.current = 0
       chordStepRef.current = 0
+      arpStepRef.current = 0
   currentStepRef.current = 0
   currentBassStepRef.current = 0
   currentChordStepRef.current = 0
+  currentArpStepRef.current = 0
   setUiStepPulse((p) => (p + 1) % 1000000)
 
       transport.start('+0.1')
@@ -1596,6 +1735,19 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         }
         break
       }
+      case 8: {
+        // Play an arp note (first chord note up an octave)
+        const currentSongSettings = songSettingsRef.current
+        const arpKey = currentSongSettings.key || 'C'
+        const arpProgressionIndex = currentSongSettings.progression ?? 0
+        const arpMode = CHORD_PROGRESSIONS[arpProgressionIndex]?.mode || 'Major'
+        const arpNotes = getChordNotes(arpKey, 0, 1, arpMode, 4) // Root triad up
+        if (arpNotes) {
+          const note = arpNotes[0]
+          synthsRef.current.arp?.triggerAttackRelease(note, '16n')
+        }
+        break
+      }
       default:
         break
     }
@@ -1610,6 +1762,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   getCurrentStep: () => currentStepRef.current,
   getCurrentBassStep: () => currentBassStepRef.current,
   getCurrentChordStep: () => currentChordStepRef.current,
+  getCurrentArpStep: () => currentArpStepRef.current,
     bpm,
     setBpm,
     activeTracks,

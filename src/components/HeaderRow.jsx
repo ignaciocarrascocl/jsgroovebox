@@ -51,10 +51,10 @@ const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, bpm, onBpmC
       <div className="header-box header-top-box">
         <div className="header-top">
           <div className="header-left">
-            <div className="logo" aria-label="JSGrooveBox">
+            <div className="logo" aria-label="jsgroovebox">
               <div className="logo-mark">JG</div>
               <div className="logo-word">
-                <div className="logo-title">JS Groovebox</div>
+                <div className="logo-title">jsgroovebox</div>
                 <div className="logo-sub">Caja de ritmos con Tone.js</div>
               </div>
             </div>

@@ -5,6 +5,7 @@ import MasterFX from './components/MasterFX'
 import Track from './components/Track'
 import BassTrack from './components/BassTrack'
 import ChordsTrack from './components/ChordsTrack'
+import ArpTrack from './components/ArpTrack'
 import { useAudioEngine } from './hooks/useAudioEngine'
 import { TRACKS, DEFAULT_PATTERNS } from './constants/tracks'
 import './App.css'
@@ -65,6 +66,25 @@ const DEFAULT_CHORD_PARAMS = {
   },
 }
 
+// Default arpeggio/lead parameters (sound only)
+const DEFAULT_ARP_PARAMS = {
+  8: {
+    volume: -6,
+    waveType: 'sawtooth',
+    attack: 0.005,
+    decay: 0.08,
+    release: 0.1,
+    filter: 1200,
+    resonance: 1,
+    detune: 5,
+    lfoRate: 0,
+    lfoDepth: 0,
+    compression: 0,
+    reverb: 0,
+    delay: 0,
+  }
+}
+
 // Default song settings (global for all melodic tracks)
 const DEFAULT_SONG_SETTINGS = {
   key: 'C',
@@ -113,6 +133,7 @@ function App() {
   const [trackParams, setTrackParams] = useState(DEFAULT_TRACK_PARAMS)
   const [bassParams, setBassParams] = useState(DEFAULT_BASS_PARAMS)
   const [chordParams, setChordParams] = useState(DEFAULT_CHORD_PARAMS)
+  const [arpParams, setArpParams] = useState(DEFAULT_ARP_PARAMS)
   const [songSettings, setSongSettings] = useState(DEFAULT_SONG_SETTINGS)
   const [mutedTracks, setMutedTracks] = useState({})
   const [soloTracks, setSoloTracks] = useState({})
@@ -126,6 +147,7 @@ function App() {
     getCurrentStep,
     getCurrentBassStep,
     getCurrentChordStep,
+    getCurrentArpStep,
     bpm,
     setBpm,
     activeTracks,
@@ -137,7 +159,7 @@ function App() {
     setMasterParams: setEngineMasterParams,
     setBusParams: setEngineBusParams,
   perfStats,
-  } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, songSettings)
+  } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, arpParams, songSettings)
 
   // Drive step-based UI off a low-rate pulse to keep controls responsive while playing.
   // (Read the latest step values via the getters.)
@@ -193,6 +215,13 @@ function App() {
     }))
   }
 
+  const handleArpParamChange = (trackId, params) => {
+    setArpParams(prev => ({
+      ...prev,
+      [trackId]: params
+    }))
+  }
+
   const handleMuteToggle = (trackId) => {
     setMutedTracks(prev => ({
       ...prev,
@@ -223,6 +252,7 @@ function App() {
       trackParams,
       bassParams,
       chordParams,
+      arpParams,
       songSettings,
       mutedTracks,
       soloTracks,
@@ -235,6 +265,7 @@ function App() {
     setTrackParams(DEFAULT_TRACK_PARAMS)
     setBassParams(DEFAULT_BASS_PARAMS)
     setChordParams(DEFAULT_CHORD_PARAMS)
+    setArpParams(DEFAULT_ARP_PARAMS)
     setSongSettings(DEFAULT_SONG_SETTINGS)
     setMutedTracks({})
     setSoloTracks({})
@@ -284,6 +315,7 @@ function App() {
     setTrackParams(snap.trackParams)
     setBassParams(snap.bassParams)
     setChordParams(snap.chordParams)
+    setArpParams(snap.arpParams)
     setSongSettings(snap.songSettings)
     setMutedTracks(snap.mutedTracks)
     setSoloTracks(snap.soloTracks)
@@ -303,6 +335,7 @@ function App() {
       trackParams,
       bassParams,
       chordParams,
+      arpParams,
       songSettings,
       mutedTracks,
       soloTracks,
@@ -320,7 +353,7 @@ function App() {
   }
 
   const handleResetBass = () => {
-    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
+    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
     setSelectedPatterns(prev => ({ ...prev, 6: DEFAULT_PATTERNS[6] ?? 0 }))
     setCustomPatterns(prev => ({ ...prev, 6: null }))
     setBassParams(DEFAULT_BASS_PARAMS)
@@ -330,7 +363,7 @@ function App() {
   }
 
   const handleResetChords = () => {
-    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
+    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
     setSelectedPatterns(prev => ({ ...prev, 7: DEFAULT_PATTERNS[7] ?? 0 }))
     setCustomPatterns(prev => ({ ...prev, 7: null }))
     setChordParams(DEFAULT_CHORD_PARAMS)
@@ -339,8 +372,18 @@ function App() {
     showUndoToast('Reset chords', snapshot)
   }
 
+  const handleResetArp = () => {
+    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
+    setSelectedPatterns(prev => ({ ...prev, 8: DEFAULT_PATTERNS[8] ?? 0 }))
+    setCustomPatterns(prev => ({ ...prev, 8: null }))
+    setArpParams(DEFAULT_ARP_PARAMS)
+    setMutedTracks(prev => ({ ...prev, 8: false }))
+    setSoloTracks(prev => ({ ...prev, 8: false }))
+    showUndoToast('Reset arp', snapshot)
+  }
+
   const handleResetMaster = () => {
-    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
+    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
     setMasterParams(DEFAULT_MASTER_PARAMS)
     setBusParams(DEFAULT_BUS_PARAMS)
     showUndoToast('Reset master & FX', snapshot)
@@ -414,7 +457,7 @@ function App() {
       {showStartup && (
         <div className={`startup-screen ${startupPhase === 'leaving' ? 'is-leaving' : ''}`} role="dialog" aria-label="Pantalla de inicio">
           <div className="startup-card">
-            <div className="startup-title">JS Groovebox</div>
+            <div className="startup-title">jsgroovebox</div>
             <div className="startup-subtitle">Una caja de ritmos en el navegador.</div>
             <div className="startup-hint">
               Para evitar bloqueos de audio, tocá “Entrar” para habilitar el sonido.
@@ -538,6 +581,34 @@ function App() {
                   masterMeter={masterMeter}
                 />
               )}
+              {/* Arp/Lead Synth Track */}
+              {(() => {
+                const arpTrack = TRACKS.find(t => t.id === 8)
+                return arpTrack ? (
+                  <ArpTrack
+                    key={arpTrack.id}
+                    track={arpTrack}
+                    onReset={handleResetArp}
+                    activeResetTarget={lastResetTarget}
+                    isActive={activeTracks[8] || false}
+                    selectedPattern={selectedPatterns[8] ?? 0}
+                    customPattern={customPatterns[8]}
+                    arpParams={arpParams[8]}
+                    currentStep={getCurrentArpStep?.() ?? 0}
+                    isPlaying={isPlaying}
+                    isMuted={mutedTracks[8] || false}
+                    isSoloed={soloTracks[8] || false}
+                    isAudible={hasSolo ? soloTracks[8] : !mutedTracks[8]}
+                    onPlay={playTrack}
+                    onPatternChange={handlePatternChange}
+                    onCustomPatternChange={handleCustomPatternChange}
+                    onParamChange={handleArpParamChange}
+                    onMuteToggle={handleMuteToggle}
+                    onSoloToggle={handleSoloToggle}
+                    masterMeter={masterMeter}
+                  />
+                ) : null
+              })()}
             </div>
             {toast && (
               <Toast

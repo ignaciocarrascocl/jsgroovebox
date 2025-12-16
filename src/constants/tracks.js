@@ -21,4 +21,5 @@ export const DEFAULT_PATTERNS = {
   9: 15, // Clap - Off
   6: 0, // Bass - Straight
   7: 0, // Chords - Whole Notes
+  8: 0, // Lead/Arp - default
 }
