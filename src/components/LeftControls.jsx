@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CHORD_PROGRESSIONS, KEYS } from '../constants/song'
 import './LeftControls.css'
 
-const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, songKey, onKeyChange }) => {
+const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, songKey, onKeyChange, compact = false }) => {
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
   const BPM_MIN = 60
   const BPM_MAX = 180
@@ -71,7 +71,7 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
   }, {})
 
   return (
-    <div className="left-controls">
+    <div className={`left-controls ${compact ? 'compact' : ''}`}>
       <div className="lc-block">
         <div className="lc-label">BPM</div>
         <div className="lc-bpm">
@@ -99,8 +99,24 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
         </div>
 
         <div className="lc-bpm-actions">
-          <button type="button" className="lc-bpm-action" onClick={handleTap}>Tap</button>
-          <button type="button" className="lc-bpm-action" onClick={() => commitBpm(120)}>Reset</button>
+          <button
+            type="button"
+            className="lc-bpm-action"
+            onClick={handleTap}
+            aria-label="Tap BPM"
+            title="Tap"
+          >
+            Tap
+          </button>
+          <button
+            type="button"
+            className="lc-bpm-action"
+            onClick={() => commitBpm(120)}
+            aria-label="Reset BPM"
+            title="Reset BPM"
+          >
+            Reset
+          </button>
         </div>
       </div>
 
@@ -112,7 +128,7 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
             value={songKey}
             onChange={(e) => onKeyChange(e.target.value)}
             aria-label="Selector de tonalidad"
-            size={4}
+            size={compact ? 1 : 4}
           >
             {KEYS.map((k) => (
               <option key={k} value={k}>{k}</option>
@@ -129,7 +145,7 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
             value={progression}
             onChange={(e) => onProgressionChange(Number(e.target.value))}
             aria-label="Selector de progresión"
-            size={6}
+            size={compact ? 1 : 6}
           >
             {Object.entries(groupedProgressions).map(([groupName, items]) => (
               <optgroup key={groupName} label={groupName}>

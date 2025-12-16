@@ -1,6 +1,7 @@
 import './HeaderRow.css'
+import LeftControls from './LeftControls'
 
-const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults }) => {
+const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, bpm, onBpmChange, progression, onProgressionChange, songKey, onKeyChange }) => {
   const usedMb = perf?.usedJSHeapSizeMb
   const fps = perf?.fps
 
@@ -46,6 +47,17 @@ const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults }) => {
       </div>
 
       <div className="header-right">
+        <div className="header-controls">
+          <LeftControls
+            compact
+            bpm={bpm}
+            onBpmChange={onBpmChange}
+            progression={progression}
+            onProgressionChange={onProgressionChange}
+            songKey={songKey}
+            onKeyChange={onKeyChange}
+          />
+        </div>
         <button className="header-pill" type="button">Save</button>
         <button className="header-pill" type="button">Load</button>
         <button className="header-pill" type="button">Prefs</button>

@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import HeaderRow from './components/HeaderRow'
 import Toast from './components/Toast'
-import LeftControls from './components/LeftControls'
 import MasterFX from './components/MasterFX'
 import Track from './components/Track'
 import BassTrack from './components/BassTrack'
@@ -410,20 +409,20 @@ function App() {
       <div className="tracks-container">
         {toneStarted ? (
           <>
-            <HeaderRow isPlaying={isPlaying} onTogglePlay={togglePlay} perf={perfStats} onResetDefaults={handleResetDefaults} />
+            <HeaderRow
+              isPlaying={isPlaying}
+              onTogglePlay={togglePlay}
+              perf={perfStats}
+              onResetDefaults={handleResetDefaults}
+              bpm={bpm}
+              onBpmChange={setBpm}
+              progression={songSettings.progression}
+              onProgressionChange={handleProgressionChange}
+              songKey={songSettings.key}
+              onKeyChange={handleKeyChange}
+            />
 
             <div className="controls-row">
-              <div className="controls-left">
-                <LeftControls
-                  bpm={bpm}
-                  onBpmChange={setBpm}
-                  progression={songSettings.progression}
-                  onProgressionChange={handleProgressionChange}
-                  songKey={songSettings.key}
-                  onKeyChange={handleKeyChange}
-                />
-              </div>
-
               <div className="controls-right">
                 <MasterFX
                   masterParams={masterParams}
