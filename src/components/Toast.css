@@ -1,0 +1,64 @@
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 24px;
+  background: rgba(20,20,35,0.95);
+  color: white;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  z-index: 9999;
+}
+
+/* Toast entrance animation */
+@keyframes toast-in {
+  from { transform: translateX(-50%) translateY(18px); opacity: 0 }
+  to { transform: translateX(-50%) translateY(0); opacity: 1 }
+}
+.toast {
+  animation: toast-in 260ms cubic-bezier(.2,.9,.2,1);
+}
+
+/* Slight pulse on the Undo button to attract attention */
+@keyframes undo-pulse {
+  0% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  30% { box-shadow: 0 0 10px rgba(102,126,234,0.9); }
+  100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+.toast-btn.undo {
+  animation: undo-pulse 900ms ease-out;
+}
+
+.toast-message {
+  font-size: 13px;
+}
+
+.toast-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toast-btn {
+  background: rgba(255,255,255,0.06);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.toast-btn.undo {
+  background: rgba(102,126,234,0.95);
+}
+
+.toast-btn.close {
+  background: transparent;
+  font-size: 14px;
+  padding: 4px 6px;
+}

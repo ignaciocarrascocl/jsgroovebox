@@ -26,7 +26,7 @@
 .selector-label {
   display: block;
   color: rgba(255, 255, 255, 0.4);
-  font-size: 8px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -36,6 +36,7 @@
 .bass-track-header {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 /* Reuse Track.css button styles */
@@ -46,13 +47,14 @@
 /* Track Actions (Mute/Solo) */
 .bass-track-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
 }
 
 .bass-track-actions .action-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(0, 0, 0, 0.4);
@@ -61,7 +63,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   transition: all 0.15s;
 }
@@ -83,48 +85,31 @@
   color: #1a1a28;
 }
 
-/* Controls Section */
+/* Controls Section - moved to column layout and knobs limited to 3 per row */
 .bass-track-controls {
   display: flex;
-  padding: 8px;
+  flex-direction: column;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 10px;
+  gap: 8px;
+  align-items: stretch;
 }
 
 .bass-knobs-section {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   flex: 1;
   justify-items: center;
   align-items: flex-start;
 }
 
-/* Wave Selector */
-.wave-selector {
-  display: flex;
-  flex-direction: column;
-  padding: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-}
-
-.wave-buttons {
-  display: flex;
-  gap: 3px;
-}
-
-.wave-btn {
-  flex: 1;
-  padding: 4px 2px;
-  font-size: 8px;
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.4);
-  color: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
+@media (max-width: 520px) {
+  .bass-knobs-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
 }
 
 .wave-btn:hover {
@@ -142,25 +127,31 @@
 .bass-track .sound-preset-selector {
   display: flex;
   flex-direction: column;
-  padding: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  width: 100%;
+}
+
+.bass-presets-row {
+  margin: 8px 0;
+  width: 100%;
 }
 
 .bass-track .sound-preset-buttons {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
+  gap: 8px;
 }
 
 .bass-track .sound-preset-btn {
-  padding: 4px 2px;
-  font-size: 7px;
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.4);
-  color: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -180,6 +171,7 @@
   position: relative;
   z-index: 10;
   overflow: visible;
+  margin-top: 8px;
 }
 
 .pattern-header {
@@ -242,7 +234,7 @@
 }
 
 .bass-pattern-accordion .header-name {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
   text-transform: uppercase;

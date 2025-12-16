@@ -1,6 +1,10 @@
 import Knob from './Knob'
 import MasterSoundVisualizer from './MasterSoundVisualizer'
 import './MasterFX.css'
+import FilterViz from './FilterViz'
+import EQViz from './EQViz'
+import StereoMeter from './StereoMeter'
+import CompressorViz from './CompressorViz'
 
 const MasterFX = ({
   masterParams,
@@ -9,6 +13,14 @@ const MasterFX = ({
   onBusParamChange,
   meter,
   masterNode,
+  onResetMaster,
+  onResetComp,
+  onResetEQ,
+  onResetVolume,
+  onResetFilter,
+  onResetReverb,
+  onResetDelay,
+  activeResetTarget,
 }) => {
   const handleMaster = (param, value) => {
     onMasterParamChange({ ...masterParams, [param]: value })
@@ -25,11 +37,19 @@ const MasterFX = ({
   }
 
   const peakDb = meter?.peakDb ?? -Infinity
+  const linToDb = (v) => {
+    if (typeof v !== 'number') return '-∞'
+    const val = Math.max(1e-8, Math.abs(v))
+    return `${Math.round(20 * Math.log10(val))} dB`
+  }
 
   return (
     <div className="masterfx">
       <div className="masterfx-header">
-        <div className="masterfx-name">MASTER</div>
+        <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+          <div className="masterfx-name">MASTER</div>
+          <button className="masterfx-reset" title="Reset master & FX" onClick={() => onResetMaster?.()}>⟲</button>
+        </div>
         <div className="masterfx-meterbar">
           <div className="meterbar-bg" />
           <div
@@ -55,122 +75,318 @@ const MasterFX = ({
       />
 
       <div className="masterfx-grid">
-        <div className="fx-strip">
-          <div className="fx-strip-title">COMP</div>
+  <div className={`fx-strip ${activeResetTarget === 'comp' ? 'just-reset' : ''}`}>
+          <div className="fx-strip-title">COMP <button className="fx-strip-reset" title="Reset compressor" onClick={() => onResetComp?.()}>⟲</button></div>
+          <div className="viz">
+            <CompressorViz
+              threshold={masterParams?.compThreshold}
+              ratio={masterParams?.compRatio}
+              makeup={masterParams?.compMakeup}
+            />
+          </div>
+          {/* Threshold: level where compression starts (dB) */}
           <Knob
-            label="Amount"
-            value={masterParams?.compression ?? 0}
-            min={0}
-            max={1}
-            onChange={(v) => handleMaster('compression', v)}
+            label="Threshold"
+            unit="dB"
+            tooltip="Level where compression starts"
+            value={masterParams?.compThreshold ?? -24}
+            min={-60}
+            max={0}
+            onChange={(v) => handleMaster('compThreshold', v)}
             color="#ff6b6b"
           />
+          {/* Ratio: how strongly levels above threshold are reduced */}
           <Knob
-            label="Makeup"
-            value={masterParams?.compMakeup ?? 0}
-            min={-12}
-            max={12}
-            onChange={(v) => handleMaster('compMakeup', v)}
+            label="Ratio"
+            unit="x"
+            tooltip="Compression ratio (e.g., 4 means 4:1)"
+            value={masterParams?.compRatio ?? 4}
+            min={1}
+            max={20}
+            onChange={(v) => handleMaster('compRatio', v)}
             color="#ff6b6b"
           />
+          {/* Attack: how fast the compressor reacts (ms) */}
           <Knob
-            label="Mix"
-            value={masterParams?.compMix ?? 1}
-            min={0}
-            max={1}
-            onChange={(v) => handleMaster('compMix', v)}
+            label="Attack"
+            unit="ms"
+            tooltip="How fast the compressor reacts (ms)"
+            value={masterParams?.compAttack ?? 10}
+            min={0.1}
+            max={200}
+            onChange={(v) => handleMaster('compAttack', v)}
+            color="#ff6b6b"
+          />
+          {/* Release: how fast the compressor releases (ms) - a close 4th to Attack */}
+          <Knob
+            label="Release"
+            unit="ms"
+            tooltip="How fast the compressor releases (ms)"
+            value={masterParams?.compRelease ?? 200}
+            min={10}
+            max={2000}
+            onChange={(v) => handleMaster('compRelease', v)}
             color="#ff6b6b"
           />
         </div>
 
-        <div className="fx-strip">
-          <div className="fx-strip-title">EQ</div>
-          <Knob
-            label="Low"
-            value={masterParams?.eqLow ?? 0}
-            min={-12}
-            max={12}
-            onChange={(v) => handleMaster('eqLow', v)}
-            color="#4ecdc4"
-          />
-          <Knob
-            label="Mid"
-            value={masterParams?.eqMid ?? 0}
-            min={-12}
-            max={12}
-            onChange={(v) => handleMaster('eqMid', v)}
-            color="#4ecdc4"
-          />
-          <Knob
-            label="High"
-            value={masterParams?.eqHigh ?? 0}
-            min={-12}
-            max={12}
-            onChange={(v) => handleMaster('eqHigh', v)}
-            color="#4ecdc4"
-          />
+  <div className={`fx-strip ${activeResetTarget === 'eq' ? 'just-reset' : ''}`}>
+          <div className="fx-strip-title">EQ <button className="fx-strip-reset" title="Reset EQ" onClick={() => onResetEQ?.()}>⟲</button></div>
+          <div className="viz">
+            <EQViz
+              low={{ f: masterParams?.eqLowFreq ?? 100, g: masterParams?.eqLowGain ?? 0, q: masterParams?.eqLowQ ?? 1 }}
+              mid={{ f: masterParams?.eqMidFreq ?? 1000, g: masterParams?.eqMidGain ?? 0, q: masterParams?.eqMidQ ?? 1 }}
+              high={{ f: masterParams?.eqHighFreq ?? 8000, g: masterParams?.eqHighGain ?? 0, q: masterParams?.eqHighQ ?? 1 }}
+            />
+          </div>
+          <div className="eq-bands">
+            <div className="eq-band">
+              <div className="eq-band-title">Low</div>
+                <Knob
+                  label="Freq"
+                  unit="Hz"
+                  tooltip="Center frequency for low band"
+                  value={masterParams?.eqLowFreq ?? 100}
+                  min={20}
+                  max={1000}
+                  onChange={(v) => handleMaster('eqLowFreq', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+                <Knob
+                  label="Gain"
+                  unit="dB"
+                  tooltip="Gain for low band"
+                  value={masterParams?.eqLowGain ?? 0}
+                  min={-12}
+                  max={12}
+                  onChange={(v) => handleMaster('eqLowGain', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+                <Knob
+                  label="Q"
+                  unit="Q"
+                  tooltip="Bandwidth of the low band"
+                  value={masterParams?.eqLowQ ?? 1}
+                  min={0.1}
+                  max={10}
+                  onChange={(v) => handleMaster('eqLowQ', v)}
+                  color="#4ecdc4"
+                  size={44}
+                />
+            </div>
+
+            <div className="eq-band">
+              <div className="eq-band-title">Mid</div>
+              <Knob
+                label="Freq"
+                unit="Hz"
+                tooltip="Center frequency for mid band"
+                value={masterParams?.eqMidFreq ?? 1000}
+                min={200}
+                max={5000}
+                onChange={(v) => handleMaster('eqMidFreq', v)}
+                color="#4ecdc4"
+                size={44}
+              />
+              <Knob
+                label="Gain"
+                unit="dB"
+                tooltip="Gain for mid band"
+                value={masterParams?.eqMidGain ?? 0}
+                min={-12}
+                max={12}
+                onChange={(v) => handleMaster('eqMidGain', v)}
+                color="#4ecdc4"
+                size={44}
+              />
+              <Knob
+                label="Q"
+                unit="Q"
+                tooltip="Bandwidth of the mid band"
+                value={masterParams?.eqMidQ ?? 1}
+                min={0.1}
+                max={10}
+                onChange={(v) => handleMaster('eqMidQ', v)}
+                color="#4ecdc4"
+                size={44}
+              />
+            </div>
+
+            <div className="eq-band">
+              <div className="eq-band-title">High</div>
+              <Knob
+                label="Freq"
+                unit="Hz"
+                tooltip="Center frequency for high band"
+                value={masterParams?.eqHighFreq ?? 8000}
+                min={2000}
+                max={20000}
+                onChange={(v) => handleMaster('eqHighFreq', v)}
+                color="#4ecdc4"
+                size={44}
+              />
+              <Knob
+                label="Gain"
+                unit="dB"
+                tooltip="Gain for high band"
+                value={masterParams?.eqHighGain ?? 0}
+                min={-12}
+                max={12}
+                onChange={(v) => handleMaster('eqHighGain', v)}
+                color="#4ecdc4"
+                size={44}
+              />
+              <Knob
+                label="Q"
+                unit="Q"
+                tooltip="Bandwidth of the high band"
+                value={masterParams?.eqHighQ ?? 1}
+                min={0.1}
+                max={10}
+                onChange={(v) => handleMaster('eqHighQ', v)}
+                color="#4ecdc4"
+                size={44}
+              />
+            </div>
+          </div>
+          {/* EQViz already shown at top of this strip */}
         </div>
 
-        <div className="fx-strip">
-          <div className="fx-strip-title">VOLUME</div>
+  <div className={`fx-strip ${activeResetTarget === 'volume' ? 'just-reset' : ''}`}>
+          <div className="fx-strip-title">VOLUME <button className="fx-strip-reset" title="Reset output level" onClick={() => onResetVolume?.()}>⟲</button></div>
+          <div className="viz viz--tall">
+            <StereoMeter
+              leftDb={meter?.leftPeakDb}
+              rightDb={meter?.rightPeakDb}
+              leftRmsDb={meter?.leftRmsDb}
+              rightRmsDb={meter?.rightRmsDb}
+            />
+          </div>
+          {/* Primary output level (dB) */}
           <Knob
-            label="Master"
+            label="Level"
+            unit="dB"
+            tooltip="Primary output level"
             value={masterParams?.volume ?? 0}
             min={-60}
             max={6}
             onChange={(v) => handleMaster('volume', v)}
             color="#a78bfa"
           />
-          <Knob
-            label="Out"
-            value={masterParams?.outGain ?? 0}
-            min={-18}
-            max={18}
-            onChange={(v) => handleMaster('outGain', v)}
-            color="#a78bfa"
-          />
-          <Knob
-            label="Pan"
-            value={masterParams?.pan ?? 0}
-            min={-1}
-            max={1}
-            onChange={(v) => handleMaster('pan', v)}
-            color="#a78bfa"
-          />
         </div>
 
-        <div className="fx-strip">
-          <div className="fx-strip-title">FILTER</div>
+  <div className={`fx-strip ${activeResetTarget === 'filter' ? 'just-reset' : ''}`}>
+          <div className="fx-strip-title">FILTER <button className="fx-strip-reset" title="Reset filter" onClick={() => onResetFilter?.()}>⟲</button></div>
+          <div className="viz">
+            <FilterViz
+              type={['lowpass', 'highpass', 'bandpass', 'notch'][masterParams?.filterType ?? 0]}
+              cutoff={masterParams?.filterCutoff}
+              q={masterParams?.filterReso}
+              bandwidth={masterParams?.filterBandwidth}
+              slope={masterParams?.filterSlope}
+            />
+          </div>
           <Knob
             label="Cutoff"
+            unit="Hz"
+            tooltip="Frequency where the filter starts to attenuate"
             value={masterParams?.filterCutoff ?? 20000}
             min={40}
             max={20000}
             onChange={(v) => handleMaster('filterCutoff', v)}
             color="#ffd166"
           />
-          <Knob
-            label="Reso"
-            value={masterParams?.filterReso ?? 0.7}
-            min={0.1}
-            max={12}
-            onChange={(v) => handleMaster('filterReso', v)}
-            color="#ffd166"
-          />
-          <Knob
-            label="Drive"
-            value={masterParams?.filterDrive ?? 0}
-            min={0}
-            max={1}
-            onChange={(v) => handleMaster('filterDrive', v)}
-            color="#ffd166"
-          />
+          {/* Dynamic control: resonance (Q) for LP/HP, width (Hz) for BP/Notch */}
+          {((masterParams?.filterType ?? 0) === 2 || (masterParams?.filterType ?? 0) === 3) ? (
+            <Knob
+              label="Width"
+              unit="Hz"
+              tooltip="Absolute bandwidth for bandpass/notch (Hz)"
+              value={masterParams?.filterBandwidth ?? 1000}
+              min={20}
+              max={8000}
+              onChange={(v) => handleMaster('filterBandwidth', v)}
+              color="#ffd166"
+            />
+          ) : (
+            <Knob
+              label="Resonance"
+              unit="Q"
+              tooltip="Emphasis around the cutoff (Q)"
+              value={masterParams?.filterReso ?? 0.7}
+              min={0.1}
+              max={20}
+              onChange={(v) => handleMaster('filterReso', v)}
+              color="#ffd166"
+            />
+          )}
+
+          {/* visualization is shown at the top of the strip */}
+
+          <div className="filter-slope">
+            <label className="filter-slope-label">Slope</label>
+            <div className="segmented" role="tablist" aria-label="Filter slope">
+              {[12, 24, 36, 48].map((d) => (
+                <button
+                  key={d}
+                  className={"segmented-btn" + ((masterParams?.filterSlope ?? 24) === d ? ' active' : '')}
+                  onClick={() => handleMaster('filterSlope', d)}
+                >
+                  {d}dB
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-type">
+            <div className="filter-type-label">Type</div>
+            <div className="segmented" role="tablist" aria-label="Filter type">
+              {[["Lowpass","LP"], ["Highpass","HP"], ["Bandpass","BP"], ["Notch","NT"]].map(([t, short], i) => (
+                <button
+                  key={t}
+                  className={"segmented-btn" + ((masterParams?.filterType ?? 0) === i ? ' active' : '')}
+                  onClick={() => {
+                    // Adjust cutoff/resonance when switching to types that make more sense in a narrower band
+                    const fp = masterParams ?? {}
+                    const next = {
+                      ...fp,
+                      filterType: i,
+                    }
+                    // Reasonable defaults when switching to band-focused filters
+                    if (i === 2) {
+                      // Bandpass: prefer midrange if cutoff is very high/low
+                      if ((fp.filterCutoff ?? 20000) > 12000) next.filterCutoff = 1000
+                      next.filterReso = Math.max(1, fp.filterReso ?? 1)
+                    }
+                    if (i === 3) {
+                      // Notch: prefer midrange
+                      if ((fp.filterCutoff ?? 20000) > 12000) next.filterCutoff = 1000
+                      next.filterReso = Math.max(1, fp.filterReso ?? 1)
+                    }
+                    handleMaster('filterType', i)
+                    // push adjusted cutoff/reso if we changed them
+                    if (next.filterCutoff !== fp.filterCutoff) handleMaster('filterCutoff', next.filterCutoff)
+                    if (next.filterReso !== fp.filterReso) handleMaster('filterReso', next.filterReso)
+                  }}
+                  title={t}
+                  aria-pressed={(masterParams?.filterType ?? 0) === i}
+                >
+                  {short}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="fx-strip">
-          <div className="fx-strip-title">REVERB</div>
+  <div className={`fx-strip ${activeResetTarget === 'reverb' ? 'just-reset' : ''}`}>
+          <div className="fx-strip-title">REVERB <button className="fx-strip-reset" title="Reset reverb" onClick={() => onResetReverb?.()}>⟲</button></div>
+          <div className="fx-strip-sub">
+            <span className={`fx-led ${((function(v){ if (v === undefined) return false; if (Math.abs(v) <= 2) return Math.abs(v) > 1e-3; return v > -60; })(meter?.reverbVal)) ? 'on' : ''}`}></span>
+            <span className="fx-strip-in">In: {linToDb(meter?.reverbVal)}</span>
+          </div>
           <Knob
-            label="Wet"
+            label="Vol"
             value={busParams?.reverb?.wet ?? 0.2}
             min={0}
             max={0.9}
@@ -195,10 +411,14 @@ const MasterFX = ({
           />
         </div>
 
-        <div className="fx-strip">
-          <div className="fx-strip-title">DELAY</div>
+  <div className={`fx-strip ${activeResetTarget === 'delay' ? 'just-reset' : ''}`}>
+          <div className="fx-strip-title">DELAY <button className="fx-strip-reset" title="Reset delay" onClick={() => onResetDelay?.()}>⟲</button></div>
+          <div className="fx-strip-sub">
+            <span className={`fx-led ${((function(v){ if (v === undefined) return false; if (Math.abs(v) <= 2) return Math.abs(v) > 1e-3; return v > -60; })(meter?.delayVal)) ? 'on' : ''}`}></span>
+            <span className="fx-strip-in">In: {linToDb(meter?.delayVal)}</span>
+          </div>
           <Knob
-            label="Wet"
+            label="Vol"
             value={busParams?.delay?.wet ?? 0.15}
             min={0}
             max={0.9}

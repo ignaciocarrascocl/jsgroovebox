@@ -10,7 +10,9 @@ const Knob = ({
   onChange, 
   color = '#667eea',
   size = 48,
-  displayValue: customDisplayValue
+  displayValue: customDisplayValue,
+  unit, // optional unit label e.g. 'Hz', 'dB', 'ms'
+  tooltip, // optional tooltip text
 }) => {
   const canvasRef = useRef(null)
   const isDragging = useRef(false)
@@ -140,7 +142,7 @@ const Knob = ({
   }
 
   return (
-    <div className="knob-wrapper">
+    <div className="knob-wrapper" title={tooltip || (unit ? `${label} (${unit})` : undefined)}>
       <canvas
         ref={canvasRef}
         width={size}
@@ -149,7 +151,10 @@ const Knob = ({
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
       />
-      <span className="knob-value">{formatDisplayValue()}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}> 
+        <span className="knob-value">{formatDisplayValue()}</span>
+        {unit ? <span className="knob-unit">{unit}</span> : null}
+      </div>
       <span className="knob-label">{label}</span>
     </div>
   )

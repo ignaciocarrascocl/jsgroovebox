@@ -1,6 +1,6 @@
 import './HeaderRow.css'
 
-const HeaderRow = ({ isPlaying, onTogglePlay, perf }) => {
+const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults }) => {
   const usedMb = perf?.usedJSHeapSizeMb
   const fps = perf?.fps
 
@@ -10,9 +10,17 @@ const HeaderRow = ({ isPlaying, onTogglePlay, perf }) => {
         <div className="logo" aria-label="JSGrooveBox">
           <div className="logo-mark">JG</div>
           <div className="logo-word">
-            <div className="logo-title">JSGrooveBox</div>
-            <div className="logo-sub">Tone.js groovebox</div>
-          </div>
+              <div className="logo-title">JSGrooveBox</div>
+            <button
+              className="logo-reset"
+              title="Reset to defaults"
+              aria-label="Reset to defaults"
+              onClick={onResetDefaults}
+            >
+              ⟲
+            </button>
+              <div className="logo-sub">Tone.js groovebox</div>
+            </div>
         </div>
       </div>
 

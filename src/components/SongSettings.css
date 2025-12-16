@@ -29,26 +29,36 @@
 /* Dropdown Selector */
 .dropdown-selector {
   position: relative;
+  /* allow the dropdown to fill its parent container so menu width matches button/container */
+  display: inline-block;
+  width: 100%;
 }
 
 .dropdown-selector.wide .dropdown-btn-main {
   min-width: 120px;
+  /* make the wide (progression) control more compact vertically */
+  padding: 2px 8px;
+  font-size: 10px;
 }
 
 .dropdown-btn-main {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 11px;
-  font-weight: 600;
+  /* match progression control visual style: slightly larger, rounded, strong contrast */
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.15s ease;
   min-width: 50px;
+  /* make the button fill the selector width so menu aligns exactly */
+  width: 100%;
+  justify-content: space-between;
 }
 
 .dropdown-btn-main:hover {
@@ -64,16 +74,20 @@
 
 .dropdown-menu {
   position: absolute;
+  /* place the menu directly below the button with no hover-gap so mouse can travel
+     from button -> menu without leaving the parent */
   top: 100%;
   left: 0;
-  margin-top: 4px;
+  margin-top: 0;
+  /* make dropdown visually consistent with progression panel */
   background: rgba(20, 20, 35, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  padding: 4px;
-  z-index: 100;
-  min-width: 100%;
-  max-height: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  padding: 6px;
+  z-index: 1000;
+  min-width: 140px;
+  /* keep dropdown compact but scrollable if needed */
+  max-height: 160px;
   overflow-y: auto;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   display: none;
@@ -85,14 +99,18 @@
 }
 
 .dropdown-option {
-  display: block;
-  width: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0;
+  /* visually match progression option look */
   padding: 6px 10px;
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 10px;
+  /* make dropdown width match selector parent (left:0; right:0 ensures exact match) */
+  min-width: unset;
+  width: 100%;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
   transition: all 0.1s ease;

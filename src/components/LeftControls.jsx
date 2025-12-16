@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { CHORD_PROGRESSIONS } from '../constants/song'
+import { CHORD_PROGRESSIONS, KEYS } from '../constants/song'
 import './LeftControls.css'
 
-const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange }) => {
+const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, songKey, onKeyChange }) => {
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
   const BPM_MIN = 60
   const BPM_MAX = 180
@@ -105,6 +105,23 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange }) =>
       </div>
 
       <div className="lc-block">
+        <div className="lc-label">Key</div>
+        <div className="lc-prog-select-wrap">
+          <select
+            className="lc-prog-select"
+            value={songKey}
+            onChange={(e) => onKeyChange(e.target.value)}
+            aria-label="Selector de tonalidad"
+            size={4}
+          >
+            {KEYS.map((k) => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="lc-block">
         <div className="lc-label">PROGRESIÓN</div>
         <div className="lc-prog-select-wrap">
           <select
@@ -112,7 +129,7 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange }) =>
             value={progression}
             onChange={(e) => onProgressionChange(Number(e.target.value))}
             aria-label="Selector de progresión"
-            size={12}
+            size={6}
           >
             {Object.entries(groupedProgressions).map(([groupName, items]) => (
               <optgroup key={groupName} label={groupName}>

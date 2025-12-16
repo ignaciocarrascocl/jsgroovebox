@@ -36,6 +36,7 @@
 .chord-track-header {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 /* Reuse Track.css button styles */
@@ -46,8 +47,9 @@
 /* Track Actions (Mute/Solo) */
 .chord-track-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
 }
 
 .chord-track-actions .action-btn {
@@ -86,18 +88,28 @@
 /* Controls Section */
 .chord-track-controls {
   display: flex;
-  padding: 8px;
+  flex-direction: column;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 10px;
+  gap: 8px;
+  align-items: stretch;
 }
 
 .chord-knobs-section {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   flex: 1;
   justify-items: center;
   align-items: flex-start;
+}
+
+@media (max-width: 520px) {
+  .chord-knobs-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
 }
 
 /* Sound Preset Selector */

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import HeaderRow from './components/HeaderRow'
+import Toast from './components/Toast'
 import LeftControls from './components/LeftControls'
 import MasterFX from './components/MasterFX'
 import Track from './components/Track'
@@ -188,6 +189,182 @@ function App() {
     setSongSettings(prev => ({ ...prev, progression }))
   }
 
+  const handleKeyChange = (key) => {
+    setSongSettings(prev => ({ ...prev, key }))
+  }
+
+  const handleResetDefaults = () => {
+    // Snapshot current state for undo
+    const snapshot = {
+      selectedPatterns,
+      customPatterns,
+      trackParams,
+      bassParams,
+      chordParams,
+      songSettings,
+      mutedTracks,
+      soloTracks,
+      masterParams,
+      busParams,
+    }
+
+    setSelectedPatterns(DEFAULT_PATTERNS)
+    setCustomPatterns({})
+    setTrackParams(DEFAULT_TRACK_PARAMS)
+    setBassParams(DEFAULT_BASS_PARAMS)
+    setChordParams(DEFAULT_CHORD_PARAMS)
+    setSongSettings(DEFAULT_SONG_SETTINGS)
+    setMutedTracks({})
+    setSoloTracks({})
+    setMasterParams(DEFAULT_MASTER_PARAMS)
+    setBusParams(DEFAULT_BUS_PARAMS)
+
+    showUndoToast('Reset all to defaults', snapshot)
+  }
+
+  // Undo toast handling
+  const pendingResetRef = useRef(null)
+  const toastTimerRef = useRef(null)
+  const [toast, setToast] = useState(null)
+  const [lastResetTarget, setLastResetTarget] = useState(null)
+
+  const clearPending = () => {
+    pendingResetRef.current = null
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current)
+      toastTimerRef.current = null
+    }
+    setToast(null)
+  }
+
+  const showUndoToast = (message, snapshot, duration = 5000, target = null) => {
+    // clear previous
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current)
+    pendingResetRef.current = snapshot
+    setToast({ message })
+    // flash target (for UI feedback)
+    if (target) {
+      setLastResetTarget(target)
+      window.setTimeout(() => setLastResetTarget(null), 1100)
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      pendingResetRef.current = null
+      toastTimerRef.current = null
+      setToast(null)
+    }, duration)
+  }
+
+  const handleUndo = () => {
+    const snap = pendingResetRef.current
+    if (!snap) return
+    setSelectedPatterns(snap.selectedPatterns)
+    setCustomPatterns(snap.customPatterns)
+    setTrackParams(snap.trackParams)
+    setBassParams(snap.bassParams)
+    setChordParams(snap.chordParams)
+    setSongSettings(snap.songSettings)
+    setMutedTracks(snap.mutedTracks)
+    setSoloTracks(snap.soloTracks)
+    setMasterParams(snap.masterParams)
+    setBusParams(snap.busParams)
+    clearPending()
+    // show brief confirmation
+    setToast({ message: 'Restored' })
+    window.setTimeout(() => setToast(null), 1200)
+  }
+
+  // Per-track resets
+  const handleResetTrack = (trackId) => {
+    const snapshot = {
+      selectedPatterns,
+      customPatterns,
+      trackParams,
+      bassParams,
+      chordParams,
+      songSettings,
+      mutedTracks,
+      soloTracks,
+      masterParams,
+      busParams,
+    }
+
+    setSelectedPatterns(prev => ({ ...prev, [trackId]: DEFAULT_PATTERNS[trackId] ?? 0 }))
+    setCustomPatterns(prev => ({ ...prev, [trackId]: null }))
+    setTrackParams(prev => ({ ...prev, [trackId]: DEFAULT_TRACK_PARAMS[trackId] ?? prev[trackId] }))
+    setMutedTracks(prev => ({ ...prev, [trackId]: false }))
+    setSoloTracks(prev => ({ ...prev, [trackId]: false }))
+
+    showUndoToast('Reset track', snapshot)
+  }
+
+  const handleResetBass = () => {
+    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
+    setSelectedPatterns(prev => ({ ...prev, 6: DEFAULT_PATTERNS[6] ?? 0 }))
+    setCustomPatterns(prev => ({ ...prev, 6: null }))
+    setBassParams(DEFAULT_BASS_PARAMS)
+    setMutedTracks(prev => ({ ...prev, 6: false }))
+    setSoloTracks(prev => ({ ...prev, 6: false }))
+    showUndoToast('Reset bass', snapshot)
+  }
+
+  const handleResetChords = () => {
+    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
+    setSelectedPatterns(prev => ({ ...prev, 7: DEFAULT_PATTERNS[7] ?? 0 }))
+    setCustomPatterns(prev => ({ ...prev, 7: null }))
+    setChordParams(DEFAULT_CHORD_PARAMS)
+    setMutedTracks(prev => ({ ...prev, 7: false }))
+    setSoloTracks(prev => ({ ...prev, 7: false }))
+    showUndoToast('Reset chords', snapshot)
+  }
+
+  const handleResetMaster = () => {
+    const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
+    setMasterParams(DEFAULT_MASTER_PARAMS)
+    setBusParams(DEFAULT_BUS_PARAMS)
+    showUndoToast('Reset master & FX', snapshot)
+  }
+
+  const handleResetComp = () => {
+    const snapshot = { masterParams }
+    setMasterParams(prev => ({ ...prev, compThreshold: -24, compRatio: 4, compAttack: 10, compRelease: 200 }))
+    showUndoToast('Reset compressor', snapshot)
+  }
+
+  const handleResetEQ = () => {
+    const snapshot = { masterParams }
+    setMasterParams(prev => ({
+      ...prev,
+      eqLowFreq: 100, eqLowGain: 0, eqLowQ: 1,
+      eqMidFreq: 1000, eqMidGain: 0, eqMidQ: 1,
+      eqHighFreq: 8000, eqHighGain: 0, eqHighQ: 1,
+    }))
+    showUndoToast('Reset EQ', snapshot)
+  }
+
+  const handleResetVolume = () => {
+    const snapshot = { masterParams }
+    setMasterParams(prev => ({ ...prev, volume: DEFAULT_MASTER_PARAMS.volume ?? 0 }))
+    showUndoToast('Reset output level', snapshot)
+  }
+
+  const handleResetFilter = () => {
+    const snapshot = { masterParams }
+    setMasterParams(prev => ({ ...prev, filterCutoff: 20000, filterReso: 0.7, filterBandwidth: undefined, filterSlope: 24, filterType: 0 }))
+    showUndoToast('Reset filter', snapshot)
+  }
+
+  const handleResetReverb = () => {
+    const snapshot = { busParams }
+    setBusParams(prev => ({ ...prev, reverb: { ...DEFAULT_BUS_PARAMS.reverb } }))
+    showUndoToast('Reset reverb', snapshot)
+  }
+
+  const handleResetDelay = () => {
+    const snapshot = { busParams }
+    setBusParams(prev => ({ ...prev, delay: { ...DEFAULT_BUS_PARAMS.delay } }))
+    showUndoToast('Reset delay', snapshot)
+  }
+
   // Show first 6 tracks (kick, snare, hihat, openHH, tom, clap)
   const visibleTracks = TRACKS.slice(0, 6)
   
@@ -233,7 +410,7 @@ function App() {
       <div className="tracks-container">
         {toneStarted ? (
           <>
-            <HeaderRow isPlaying={isPlaying} onTogglePlay={togglePlay} perf={perfStats} />
+            <HeaderRow isPlaying={isPlaying} onTogglePlay={togglePlay} perf={perfStats} onResetDefaults={handleResetDefaults} />
 
             <div className="controls-row">
               <div className="controls-left">
@@ -242,6 +419,8 @@ function App() {
                   onBpmChange={setBpm}
                   progression={songSettings.progression}
                   onProgressionChange={handleProgressionChange}
+                  songKey={songSettings.key}
+                  onKeyChange={handleKeyChange}
                 />
               </div>
 
@@ -253,6 +432,14 @@ function App() {
                   onBusParamChange={setBusParams}
                   meter={masterMeter}
                   masterNode={getMasterNode?.()}
+                  onResetMaster={handleResetMaster}
+                  onResetComp={handleResetComp}
+                  onResetEQ={handleResetEQ}
+                  onResetVolume={handleResetVolume}
+                  onResetFilter={handleResetFilter}
+                  onResetReverb={handleResetReverb}
+                  onResetDelay={handleResetDelay}
+                  activeResetTarget={lastResetTarget}
                 />
               </div>
             </div>
@@ -261,6 +448,8 @@ function App() {
                 <Track
                   key={track.id}
                   track={track}
+                  onReset={handleResetTrack}
+                  activeResetTarget={lastResetTarget}
                   isActive={activeTracks[track.id] || false}
                   selectedPattern={selectedPatterns[track.id]}
                   customPattern={customPatterns[track.id]}
@@ -276,12 +465,15 @@ function App() {
                   onParamChange={handleParamChange}
                   onMuteToggle={handleMuteToggle}
                   onSoloToggle={handleSoloToggle}
+                  masterMeter={masterMeter}
                 />
               ))}
               {/* Bass Synth Track */}
               {bassTrack && (
                 <BassTrack
                   track={bassTrack}
+                  onReset={handleResetBass}
+                  activeResetTarget={lastResetTarget}
                   isActive={activeTracks[6] || false}
                   selectedPattern={selectedPatterns[6] ?? 0}
                   customPattern={customPatterns[6]}
@@ -297,12 +489,15 @@ function App() {
                   onParamChange={handleBassParamChange}
                   onMuteToggle={handleMuteToggle}
                   onSoloToggle={handleSoloToggle}
+                  masterMeter={masterMeter}
                 />
               )}
               {/* Chord Synth Track */}
               {chordsTrack && (
                 <ChordsTrack
                   track={chordsTrack}
+                  onReset={handleResetChords}
+                  activeResetTarget={lastResetTarget}
                   isActive={activeTracks[7] || false}
                   selectedPattern={selectedPatterns[7] ?? 0}
                   customPattern={customPatterns[7]}
@@ -318,9 +513,17 @@ function App() {
                   onParamChange={handleChordParamChange}
                   onMuteToggle={handleMuteToggle}
                   onSoloToggle={handleSoloToggle}
+                  masterMeter={masterMeter}
                 />
               )}
             </div>
+            {toast && (
+              <Toast
+                message={toast.message}
+                onUndo={handleUndo}
+                onClose={clearPending}
+              />
+            )}
           </>
         ) : (
           <div className={`audio-fallback ${showStartup ? 'is-hidden' : ''}`}>
