@@ -6,6 +6,7 @@ import Track from './components/Track'
 import BassTrack from './components/BassTrack'
 import ChordsTrack from './components/ChordsTrack'
 import ArpTrack from './components/ArpTrack'
+import Grid from './components/Grid'
 import { useAudioEngine } from './hooks/useAudioEngine'
 import { TRACKS, DEFAULT_PATTERNS } from './constants/tracks'
 import './App.css'
@@ -610,6 +611,7 @@ function App() {
                 ) : null
               })()}
             </div>
+            <Grid />
             {toast && (
               <Toast
                 message={toast.message}
