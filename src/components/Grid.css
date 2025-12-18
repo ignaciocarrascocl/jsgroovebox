@@ -18,6 +18,7 @@
   padding: 15px;
   background: #2a2a2a;
   border-radius: 8px;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
 }
 
 .setting-group {
@@ -32,7 +33,19 @@
 }
 
 .setting-group select {
-  background: #4a4a4a;
+  min-width: 220px;
+  background: linear-gradient(180deg, #3a3a3a, #2f2f2f);
+  color: white;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.95em;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
+}
+
+.bar-settings select {
+  min-width: 220px;
+  background: #4a4a4a; /* match .setting-group select */
   color: white;
   border: 1px solid #555;
   border-radius: 4px;
@@ -117,7 +130,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  cursor: move;
+  cursor: default;
   padding: 8px;
   border-radius: 4px;
   background: #333;
@@ -135,65 +148,87 @@
 .bar-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
-.bar-settings {
-  display: flex;
-  gap: 5px;
+.part-name-input {
+  background: linear-gradient(180deg, #111, #1a1a1a);
+  color: #fff;
+  border: 1px solid #333;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  min-width: 200px;
+  box-shadow: inset 0 -2px 0 rgba(255,255,255,0.02);
+  transition: box-shadow 0.12s ease, transform 0.08s ease;
 }
 
-.bar-settings select {
-  background: #4a4a4a;
-  color: white;
-  border: 1px solid #555;
-  border-radius: 2px;
-  padding: 2px 4px;
-  font-size: 0.8em;
+.part-name-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 6px 18px rgba(96,165,250,0.12);
 }
 
-.repeat-input {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.9em;
+.btn-clone {
+  background: linear-gradient(135deg, #7dd3fc, #0ea5e9);
+  color: #022c40;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
 }
 
-.repeat-input label {
-  color: #ccc;
+.btn-clear {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #2b2b2b;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
 }
 
-.repeat-input input {
-  width: 40px;
-  background: #4a4a4a;
-  color: white;
-  border: 1px solid #555;
-  border-radius: 2px;
-  padding: 2px 4px;
-  text-align: center;
+.btn-delete {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
 }
 
-.bar-controls {
-  display: flex;
-  gap: 5px;
+.btn-clone:hover:not(:disabled),
+.btn-clear:hover:not(:disabled),
+.btn-delete:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.25);
 }
 
-.bar-controls button {
-  background: #555;
+.apply-prog-btn {
+  background: linear-gradient(135deg, #0ea5e9, #0077cc);
   color: white;
   border: none;
-  border-radius: 2px;
-  padding: 2px 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 0.8em;
+  font-size: 0.9em;
+  font-weight: 600;
+  white-space: normal;
+  line-height: 1.1;
+  max-width: 220px;
+  text-align: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.bar-controls button:hover:not(:disabled) {
-  background: #666;
+.apply-prog-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(16,185,129,0.15);
 }
 
-.bar-controls button:disabled {
+.apply-prog-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -206,6 +241,8 @@
 }
 
 .step {
+  min-width: 0; /* allow shrink to fit grid column */
+  box-sizing: border-box;
   background: #3a3a3a;
   border-radius: 4px;
   display: flex;
@@ -213,6 +250,7 @@
   justify-content: center;
   cursor: pointer;
   position: relative;
+  overflow: hidden; /* ensure internal content won't expand the step */
 }
 
 .step.empty {
@@ -224,7 +262,13 @@
 .step.empty:hover {
   background: #4a4a4a;
   border-color: #777;
+}
+
+.step.empty.drop-target {
+  background: #3b82f6; /* highlighted blue */
+  border-color: #7fb4ff;
   transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(59,130,246,0.12);
 }
 
 .step.occupied {
@@ -254,6 +298,7 @@
   width: 100%;
   height: 100%;
   position: relative;
+  overflow: hidden; /* prevent children forcing wider size */
 }
 
 .chord-name {
@@ -331,16 +376,14 @@
 
 .chord-edits {
   display: flex;
-  gap: 2px;
-  margin-top: 4px;
+  flex-direction: column; /* stack vertically */
+  gap: 4px;
+  margin-top: 6px;
   opacity: 0;
   transition: opacity 0.2s;
   pointer-events: none;
-}
-
-.step.occupied:hover .chord-edits {
-  opacity: 1;
-  pointer-events: auto;
+  align-items: center;
+  z-index: 2;
 }
 
 .chord-edits select {
@@ -348,77 +391,163 @@
   color: #fff;
   border: 1px solid #555;
   border-radius: 3px;
-  font-size: 0.7em;
-  padding: 1px 2px;
-}
-
-.drag-indicator {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  font-size: 0.8em;
-  color: #ccc;
-  cursor: grab;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.step.occupied:hover .drag-indicator {
-  opacity: 1;
+  font-size: 0.8em; /* slightly larger to help usability */
+  padding: 3px 6px;
+  width: 70%;
+  max-width: calc(100% - 8px);
+  box-sizing: border-box;
 }
 
 .delete-btn {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 6px; /* top-centered */
+  left: 50%;
+  transform: translateX(-50%);
   background: #d9534f;
   color: #fff;
   border: none;
-  border-radius: 3px;
-  width: 16px;
-  height: 16px;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
   cursor: pointer;
   font-size: 0.8em;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 1;
-  pointer-events: auto;
+  opacity: 0; /* hidden by default */
+  pointer-events: none;
+  z-index: 1;
 }
 
 .delete-btn:hover {
   background: #c9302c;
 }
 
-.resize-handle {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 10px;
-  background: rgba(255, 255, 255, 0.3);
-  cursor: ew-resize;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.step.occupied:hover .resize-handle {
+.step.occupied:hover .delete-btn {
   opacity: 1;
+  pointer-events: auto;
 }
 
-.part-name-input {
-  background: transparent;
-  border: 1px solid transparent;
-  color: white;
-  font-weight: bold;
-  font-size: 1em;
-  min-width: 80px;
-  padding: 2px 6px;
-  border-radius: 4px;
+.step.occupied:hover .chord-edits {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.part-name-input:focus {
-  outline: none;
-  border-color: #777;
+/* Debug: compact chord list shown under each part */
+.part-chord-list {
+  margin-top: 8px;
   background: rgba(255,255,255,0.02);
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: #d1d5db;
+  font-size: 0.9em;
+}
+
+.part-chord-empty {
+  color: #ddd;
+  font-style: italic;
+}
+
+.part-chord-item {
+  background: #3b3b3b;
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.part-chord-start {
+  color: #9ca3af;
+  font-size: 0.8em;
+}
+
+.part-chord-name {
+  font-weight: 700;
+  color: #fff;
+}
+
+.part-chord-duration {
+  color: #9ca3af;
+  font-size: 0.8em;
+}
+
+.btn-move {
+  background: #111827;
+  color: #f8fafc;
+  border: 1px solid #2b3440;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-move:hover:not(:disabled) {
+  background: linear-gradient(135deg,#111827,#0f1720);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(2,6,23,0.6);
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(180deg,#0b1220,#0e1622);
+  color: #9ca3af;
+  border: 1px solid #1f2937;
+  cursor: grab;
+  margin-right: 8px;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-icon {
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.repeat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+}
+
+.repeat-input label {
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: 0.85em;
+  background: linear-gradient(180deg,#0b1220,#0e1622);
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #232a33;
+}
+
+.repeat-input input {
+  width: 64px;
+  background: linear-gradient(180deg,#111827,#0f1720);
+  color: #fff;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 rgba(255,255,255,0.02);
+}
+
+.repeat-input input:focus {
+  outline: none;
+  box-shadow: 0 6px 18px rgba(96,165,250,0.06);
+  border-color: #60a5fa;
 }

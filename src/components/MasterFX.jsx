@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Knob from './Knob'
 import MasterSoundVisualizer from './MasterSoundVisualizer'
 import './MasterFX.css'
@@ -19,6 +20,8 @@ const MasterFX = ({
   onResetDelay,
   activeResetTarget,
 }) => {
+  const [fxCollapsed, setFxCollapsed] = useState(false)
+
   const handleMaster = (param, value) => {
     onMasterParamChange({ ...masterParams, [param]: value })
   }
@@ -50,14 +53,33 @@ const MasterFX = ({
         <div className="masterfx-sub">FX</div>
       </div>
 
-      <MasterSoundVisualizer
-        inputNode={masterNode}
-        height={80}
-        strokeColor="rgba(255,255,255,0.90)"
-        isActive={true}
-      />
+      <div className="masterfx-visualizer">
+        <MasterSoundVisualizer
+          inputNode={masterNode}
+          height={80}
+          strokeColor="rgba(255,255,255,0.90)"
+          isActive={true}
+        />
+      </div>
 
-      <div className="masterfx-grid">
+      <div className="masterfx-global">
+        <div className="masterfx-global-header">
+          <div className="masterfx-global-title">Global FX</div>
+          <div className="masterfx-global-actions">
+            <button
+              className="masterfx-global-toggle"
+              aria-expanded={!fxCollapsed}
+              aria-controls="global-fx-grid"
+              title={fxCollapsed ? 'Show FX' : 'Hide FX'}
+              onClick={() => setFxCollapsed(s => !s)}
+            >
+              <span className={`chev ${fxCollapsed ? 'collapsed' : 'expanded'}`}>{fxCollapsed ? '▸' : '▾'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="global-fx-grid" aria-hidden={fxCollapsed} className={`masterfx-body ${fxCollapsed ? 'collapsed' : 'expanded'}`}>
+          <div className="masterfx-grid">
 
 
   <div className={`fx-strip eq ${activeResetTarget === 'eq' ? 'just-reset' : ''}`}>
@@ -169,14 +191,14 @@ const MasterFX = ({
                 />
                 <Knob
                   label="Q"
-                  unit="Q"
-                  tooltip="Bandwidth of the mid band"
-                  value={masterParams?.eqMidQ ?? 1}
-                  min={0.1}
-                  max={10}
-                  onChange={(v) => handleMaster('eqMidQ', v)}
-                  color="#4ecdc4"
-                  size={44}
+                    unit="Q"
+                    tooltip="Bandwidth of the mid band"
+                    value={masterParams?.eqMidQ ?? 1}
+                    min={0.1}
+                    max={10}
+                    onChange={(v) => handleMaster('eqMidQ', v)}
+                    color="#4ecdc4"
+                    size={44}
                 />
               </div>
             </div>
@@ -583,6 +605,8 @@ const MasterFX = ({
             onChange={(v) => handleMaster('volume', v)}
             color="#a78bfa"
           />
+        </div>
+          </div>
         </div>
       </div>
     </div>

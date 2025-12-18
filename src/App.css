@@ -234,7 +234,8 @@
 .tracks-grid {
   display: grid;
   /* Allow columns to shrink below their content min-width so the grid doesn't overflow */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Show tracks in three columns (desktop) so 6 rhythm + 3 synths form a 3x3 layout */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   padding: 16px;
   margin-top: auto;

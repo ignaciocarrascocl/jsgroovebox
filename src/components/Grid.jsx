@@ -1,68 +1,24 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import './Grid.css'
 
-const CHORD_TYPES = [
-  { label: '', value: '' },
-  { label: 'maj', value: 'major' },
-  { label: 'min', value: 'minor' },
-  { label: '7', value: '7' },
-  { label: 'maj7', value: 'maj7' },
-  { label: 'min7', value: 'min7' },
-  { label: 'dim', value: 'dim' },
-  { label: 'aug', value: 'aug' },
-  { label: 'sus4', value: 'sus4' },
-  { label: 'sus2', value: 'sus2' },
-]
-
-const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-
-const MAJOR_SCALE = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°']
-const MINOR_SCALE = ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII']
-
-const CHORD_NAMES_MAJOR = [
-  'maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'
-]
-
-const CHORD_NAMES_MINOR = [
-  'min', 'dim', 'maj', 'min', 'min', 'maj', 'maj'
-]
-
-function getChordForDegree(key, degree, mode) {
-  const keyIndex = NOTES.indexOf(key)
-  const noteIndex = (keyIndex + degree) % 12
-  const note = NOTES[noteIndex]
-  
-  const scale = mode === 'Major' ? MAJOR_SCALE : MINOR_SCALE
-  const chordTypes = mode === 'Major' ? CHORD_NAMES_MAJOR : CHORD_NAMES_MINOR
-  
-  const roman = scale[degree]
-  let type = chordTypes[degree]
-  
-  // Map short types to full values for consistency
-  if (type === 'maj') type = 'major'
-  else if (type === 'min') type = 'minor'
-  else if (type === 'dim') type = 'dim'
-  
-  let displayType = ''
-  if (type === 'minor') displayType = 'm'
-  else if (type === 'dim') displayType = 'dim'
-  else if (type === 'major') displayType = ''
-  else displayType = type
-  
-  return { note, roman, type, displayType }
-}
-
-const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+import { KEYS } from './gridHelpers'
+import ScaleDisplay from './ScaleDisplay'
+import Bar from './Bar'
+import { CHORD_PROGRESSIONS } from '../constants/song'
+import { getChordForDegree } from './gridHelpers'
 
 const Grid = () => {
   const [bars, setBars] = useState([
-    { id: 1, name: 'Part 1', notes: [], repeat: 1, current: 1, key: 'C', mode: 'Major' } // notes: [{ start: 0, duration: 1, root: 'C', type: 'major' }]
+    { id: 1, name: 'Parte 1', notes: [], repeat: 1, current: 1, key: 'C', mode: 'Major' } // notes: [{ start: 0, duration: 1, root: 'C', type: 'major' }]
   ])
   
   const [selectedKey, setSelectedKey] = useState('C')
   const [selectedMode, setSelectedMode] = useState('Major')
   const [isResizing, setIsResizing] = useState(false)
   const [resizingData, setResizingData] = useState({ barIndex: null, noteIndex: null, startX: 0, initialDuration: 0, initialStart: 0 })
+  const [dragOverCell, setDragOverCell] = useState({ barIndex: null, stepIndex: null, valid: false })
+  const [draggingType, setDraggingType] = useState(null)
+  const nextNoteIdRef = useRef(1)
 
   const updateBarName = (barIndex, name) => {
     const newBars = [...bars]
@@ -73,7 +29,7 @@ const Grid = () => {
   const addBar = () => {
     const newBar = {
       id: bars.length + 1,
-      name: `Part ${bars.length + 1}`,
+      name: `Parte ${bars.length + 1}`,
       notes: [],
       repeat: 1,
       current: 1,
@@ -88,14 +44,37 @@ const Grid = () => {
     const existing = bar.notes.find(n => n.start <= start && start < n.start + n.duration)
     if (!existing) {
       const newBars = [...bars]
-      newBars[barIndex].notes.push({ start, duration: 1, root, type })
+      const id = nextNoteIdRef.current++
+      newBars[barIndex].notes.push({ id, start, duration: 1, root, type })
       setBars(newBars)
     }
   }
 
   const updateNote = useCallback((barIndex, noteIndex, updates) => {
     const newBars = [...bars]
-    newBars[barIndex].notes[noteIndex] = { ...newBars[barIndex].notes[noteIndex], ...updates }
+    const bar = newBars[barIndex]
+    const origNote = bar.notes[noteIndex]
+    if (!origNote) return
+
+    const updatedNote = { ...origNote, ...updates }
+    // Ensure bounds
+    updatedNote.start = Math.max(0, Math.min(15, updatedNote.start))
+    updatedNote.duration = Math.max(1, Math.min(16 - updatedNote.start, updatedNote.duration || origNote.duration))
+
+    // Apply update
+    bar.notes[noteIndex] = updatedNote
+
+    // If start/duration changed, remove any other notes overlapping the updated range
+    if ('duration' in updates || 'start' in updates) {
+      const start = updatedNote.start
+      const end = updatedNote.start + updatedNote.duration
+      bar.notes = bar.notes.filter((n, idx) => {
+        if (idx === noteIndex) return true
+        // Keep notes that don't overlap
+        return !(n.start < end && start < n.start + n.duration)
+      })
+    }
+
     setBars(newBars)
   }, [bars])
 
@@ -120,19 +99,64 @@ const Grid = () => {
     }
   }
 
+  // Clear all notes in a part (bar)
+  const clearBar = (barIndex) => {
+    const newBars = [...bars]
+    if (!newBars[barIndex]) return
+    newBars[barIndex] = { ...newBars[barIndex], notes: [] }
+    setBars(newBars)
+  }
+
   const cloneBar = (barIndex) => {
     const bar = bars[barIndex]
     const newBar = {
       id: bars.length + 1,
-      notes: bar.notes.map(note => ({ ...note })), // deep copy
+      notes: bar.notes.map(note => ({ ...note, id: nextNoteIdRef.current++ })), // deep copy with fresh ids
       repeat: bar.repeat,
       current: bar.current,
       key: bar.key,
       mode: bar.mode,
-      name: `${bar.name} (copy)`
+      name: `${bar.name} (copia)`
     }
     const newBars = [...bars]
     newBars.splice(barIndex + 1, 0, newBar) // insert after
+    setBars(newBars)
+  }
+
+  // Apply a progression to a part (bar). Each chord will span 4 steps so a 16-step bar
+  // will contain four chords at starts 0,4,8,12. Uses the selected key (or bar key)
+  // and the progression's declared mode to compute actual chord roots/types.
+  const applyProgressionToBar = (barIndex, progressionIndex) => {
+    const prog = CHORD_PROGRESSIONS[progressionIndex]
+    if (!prog) return
+
+    const bar = bars[barIndex]
+    if (!bar) return
+
+    // Ask user to confirm overwrite if there are existing chords
+    if (bar.notes && bar.notes.length > 0) {
+      if (!window.confirm('Esto sobrescribirá los acordes existentes en esta parte. ¿Desea continuar?')) return
+    }
+
+    // Use the song-level selected key and the progression's declared mode
+    const keyToUse = selectedKey
+    const modeToUse = prog.mode || selectedMode
+
+    const chords = prog.chords || []
+    const stepLength = 4
+    const newNotes = []
+
+    for (let i = 0; i < Math.min(4, chords.length); i++) {
+      const degree = chords[i]
+      const chord = getChordForDegree(keyToUse, degree, modeToUse)
+      const start = i * stepLength
+      const duration = stepLength
+      const id = nextNoteIdRef.current++
+      newNotes.push({ id, start, duration, root: chord.note, type: chord.type })
+    }
+
+    const newBars = [...bars]
+    newBars[barIndex] = { ...newBars[barIndex], notes: newNotes, key: keyToUse, mode: modeToUse }
     setBars(newBars)
   }
 
@@ -187,18 +211,27 @@ const Grid = () => {
   }
 
   const handleNoteDragStart = (e, chord) => {
+    console.debug('handleNoteDragStart', chord)
     e.dataTransfer.setData('type', 'chord')
     e.dataTransfer.setData('chord', JSON.stringify(chord))
+    // also set a text/plain payload for browsers that require it
+    try {
+      e.dataTransfer.setData('text/plain', JSON.stringify(chord))
+    } catch {
+      // ignore if browser rejects this type
+    }
+    setDraggingType('chord')
     e.dataTransfer.effectAllowed = 'copy'
   }
 
-  const handleMoveNoteDragStart = (e, barIndex, noteIndex) => {
+  const handleMoveNoteDragStart = (e, barIndex, noteId) => {
     e.dataTransfer.setData('type', 'move-note')
     e.dataTransfer.setData('barIndex', barIndex)
-    e.dataTransfer.setData('noteIndex', noteIndex)
+    e.dataTransfer.setData('noteId', noteId)
     // Some browsers expect a text/plain payload to consider the drag valid
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'move-note', barIndex, noteIndex }))
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'move-note', barIndex, noteId }))
     e.dataTransfer.effectAllowed = 'move'
+    setDraggingType('move-note')
   }
 
   const handleStepDragOver = (e) => {
@@ -208,17 +241,71 @@ const Grid = () => {
     // dropEffect matches that; otherwise default to 'copy' (for adding new chords).
     const dragType = e.dataTransfer.getData('type') || ''
     const allowed = e.dataTransfer.effectAllowed || ''
+    console.debug('handleStepDragOver', { dragType, allowed })
     if (dragType === 'move-note' || allowed.indexOf('move') !== -1) {
       e.dataTransfer.dropEffect = 'move'
     } else {
       e.dataTransfer.dropEffect = 'copy'
     }
+    // If a chord/move-note is being dragged, compute which step we're over and mark it
+    const willAccept = dragType === 'chord' || dragType === 'move-note' || allowed.indexOf('copy') !== -1 || allowed.indexOf('move') !== -1 || draggingType !== null
+    if (willAccept) {
+      const stepsContainer = e.currentTarget.closest('.steps') || e.currentTarget
+      const barElement = stepsContainer.closest('.bar')
+      const barIndex = Array.from(document.querySelectorAll('.bar')).indexOf(barElement)
+      const gap = parseFloat(getComputedStyle(stepsContainer).getPropertyValue('gap')) || 0
+      const numSteps = 16
+      const rect = stepsContainer.getBoundingClientRect()
+      const totalGapWidth = (numSteps - 1) * gap
+      const stepWidth = (rect.width - totalGapWidth) / numSteps
+      const x = e.clientX - rect.left
+      let cumulative = 0
+      let stepIndex = 0
+      for (let i = 0; i < numSteps; i++) {
+        if (x >= cumulative && x < cumulative + stepWidth) {
+          stepIndex = i
+          break
+        }
+        cumulative += stepWidth + gap
+      }
+      const prev = dragOverCell
+      if (!prev.valid || prev.barIndex !== barIndex || prev.stepIndex !== stepIndex) {
+        setDragOverCell({ barIndex, stepIndex, valid: true })
+      }
+      e.preventDefault()
+    }
   }
+
+  const handleStepDragEnter = (e, barIndex, stepIndex) => {
+    const dragType = e.dataTransfer.getData('type') || ''
+    const allowed = e.dataTransfer.effectAllowed || ''
+    // Some browsers don't expose custom data on dragenter; fall back to effectAllowed
+    const valid = (dragType === 'chord' || dragType === 'move-note' || allowed.indexOf('copy') !== -1 || allowed.indexOf('move') !== -1)
+    console.debug('handleStepDragEnter', { dragType, allowed, barIndex, stepIndex, valid })
+    if (valid) {
+      e.preventDefault()
+      setDragOverCell({ barIndex, stepIndex, valid: true })
+    }
+  }
+
+  const handleStepDragLeave = () => {
+    setDragOverCell({ barIndex: null, stepIndex: null, valid: false })
+  }
+
+  // Clear dragging state on global dragend (source element fires dragend when the drag finishes)
+  useEffect(() => {
+    const onDragEnd = () => {
+      setDraggingType(null)
+      setDragOverCell({ barIndex: null, stepIndex: null, valid: false })
+    }
+    document.addEventListener('dragend', onDragEnd)
+    return () => document.removeEventListener('dragend', onDragEnd)
+  }, [])
 
   const handleStepsDrop = (e, barIndex) => {
     const barElement = e.currentTarget
     const rect = barElement.getBoundingClientRect()
-    const gap = 5
+    const gap = parseFloat(getComputedStyle(barElement).getPropertyValue('gap')) || 0
     const numSteps = 16
     const totalGapWidth = (numSteps - 1) * gap
     const stepWidth = (rect.width - totalGapWidth) / numSteps
@@ -237,6 +324,8 @@ const Grid = () => {
 
   const handleStepDrop = (e, barIndex, stepIndex) => {
     e.preventDefault()
+    // clear any drag-over highlight
+    setDragOverCell({ barIndex: null, stepIndex: null, valid: false })
     const dragType = e.dataTransfer.getData('type')
     if (dragType === 'chord') {
       const chordData = JSON.parse(e.dataTransfer.getData('chord'))
@@ -246,7 +335,8 @@ const Grid = () => {
       if (!existing) {
         const newBars = [...bars]
         // New chords should start with duration 1 by default
-        newBars[barIndex].notes.push({ start: stepIndex, duration: 1, root: chordData.note, type: chordData.type })
+        const id = nextNoteIdRef.current++
+        newBars[barIndex].notes.push({ id, start: stepIndex, duration: 1, root: chordData.note, type: chordData.type })
         newBars[barIndex].key = chordData.note
         newBars[barIndex].mode = (chordData.type.includes('min') || chordData.type === 'dim') ? 'Minor' : 'Major'
         console.log('Setting bar mode to:', newBars[barIndex].mode)
@@ -254,19 +344,22 @@ const Grid = () => {
       }
     } else if (dragType === 'move-note') {
       const dragBarIndex = parseInt(e.dataTransfer.getData('barIndex'))
-      const dragNoteIndex = parseInt(e.dataTransfer.getData('noteIndex'))
-      console.log(`Moving note from ${dragBarIndex}:${dragNoteIndex} to ${barIndex}:${stepIndex}`)
+      const dragNoteId = parseInt(e.dataTransfer.getData('noteId'))
+      console.log(`Moving note id ${dragNoteId} from bar ${dragBarIndex} to ${barIndex}:${stepIndex}`)
       const newBars = [...bars]
-      const note = newBars[dragBarIndex].notes[dragNoteIndex]
-      // Remove from old position
-      newBars[dragBarIndex].notes.splice(dragNoteIndex, 1)
+      // Find and remove the dragged note from its origin
+      const originBar = newBars[dragBarIndex]
+      const draggedIndex = originBar.notes.findIndex(n => n.id === dragNoteId)
+      if (draggedIndex === -1) return
+      const draggedNote = originBar.notes.splice(draggedIndex, 1)[0]
       // Calculate new start and duration, ensuring it doesn't exceed 16 steps
       const newStart = stepIndex
-      const newDuration = Math.min(note.duration, 16 - newStart)
-      // Remove any existing notes that overlap with the new position
-      newBars[barIndex].notes = newBars[barIndex].notes.filter(n => !(n.start < newStart + newDuration && newStart < n.start + n.duration))
-      // Add the note to the new position
-      newBars[barIndex].notes.push({ ...note, start: newStart, duration: newDuration })
+      const newDuration = Math.min(draggedNote.duration, 16 - newStart)
+      // Remove any overlapping notes in the target bar
+      const targetBar = newBars[barIndex]
+      targetBar.notes = targetBar.notes.filter(n => !(n.start < newStart + newDuration && newStart < n.start + n.duration))
+      // Add dragged note to target
+      targetBar.notes.push({ ...draggedNote, start: newStart, duration: newDuration })
       setBars(newBars)
     }
   }
@@ -278,9 +371,12 @@ const Grid = () => {
       const barElement = document.querySelector(`.bar:nth-child(${barIndex + 1}) .steps`)
       if (!barElement) return
       const barRect = barElement.getBoundingClientRect()
-      const stepWidth = barRect.width / 16
+      const gap = parseFloat(getComputedStyle(barElement).getPropertyValue('gap')) || 0
+      const numSteps = 16
+      const totalGapWidth = (numSteps - 1) * gap
+      const stepWidth = (barRect.width - totalGapWidth) / numSteps
       const deltaX = e.clientX - startX
-      const deltaSteps = Math.round(deltaX / stepWidth)
+      const deltaSteps = Math.round(deltaX / (stepWidth + gap))
       const newDuration = Math.max(1, Math.min(16 - initialStart, initialDuration + deltaSteps))
       updateNote(barIndex, noteIndex, { duration: newDuration })
     }
@@ -301,71 +397,12 @@ const Grid = () => {
     }
   }, [isResizing, resizingData, updateNote])
 
-  const renderStep = (barIndex, stepIndex) => {
-    const bar = bars[barIndex]
-    const note = bar.notes.find(n => n.start <= stepIndex && stepIndex < n.start + n.duration)
-    if (note) {
-      if (note.start === stepIndex) {
-        return (
-          <div className="step occupied start" style={{ gridColumn: `span ${note.duration}` }}>
-            <div className="chord-display">
-              <span className="chord-name">{note.root}{note.type === 'major' ? '' : note.type === 'minor' ? 'm' : note.type === 'dim' ? 'dim' : note.type}</span>
-              <div className="chord-edits">
-                <select
-                  draggable={false}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  value={note.root}
-                  onChange={(e) => updateNote(barIndex, bar.notes.indexOf(note), { root: e.target.value })}
-                >
-                  {NOTES.map(n => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-                <select
-                  draggable={false}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  value={note.type}
-                  onChange={(e) => updateNote(barIndex, bar.notes.indexOf(note), { type: e.target.value })}
-                >
-                  {CHORD_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="drag-indicator" draggable onDragStart={(e) => handleMoveNoteDragStart(e, barIndex, bar.notes.indexOf(note))}>⋮⋮</div>
-              <button className="delete-btn" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); removeNote(barIndex, bar.notes.indexOf(note)); }}>X</button>
-            </div>
-            <div 
-              className="resize-handle"
-              onMouseDown={(e) => {
-                setIsResizing(true)
-                setResizingData({ barIndex, noteIndex: bar.notes.indexOf(note), startX: e.clientX, initialDuration: note.duration, initialStart: note.start })
-                e.preventDefault()
-              }}
-            ></div>
-          </div>
-        )
-      } else {
-        return null
-      }
-    } else {
-      return (
-        <div 
-          className="step empty" 
-          onDragOver={handleStepDragOver}
-        >
-          +
-        </div>
-      )
-    }
-  }
-
   return (
     <div className="grid-container">
-      <h2>Song Parts Grid</h2>
+      <h2>Partes de la canción</h2>
       <div className="song-settings">
         <div className="setting-group">
-          <label>Key:</label>
+          <label>Tonalidad:</label>
           <select value={selectedKey} onChange={(e) => setSelectedKey(e.target.value)}>
             {KEYS.map(key => (
               <option key={key} value={key}>{key}</option>
@@ -373,87 +410,51 @@ const Grid = () => {
           </select>
         </div>
         <div className="setting-group">
-          <label>Mode:</label>
+          <label>Modo:</label>
           <select value={selectedMode} onChange={(e) => setSelectedMode(e.target.value)}>
-            <option value="Major">Major</option>
-            <option value="Minor">Minor</option>
+            <option value="Major">Mayor</option>
+            <option value="Minor">Menor</option>
           </select>
         </div>
       </div>
-      <div className="scale-display">
-        <h3>Scale Chords ({selectedKey} {selectedMode}):</h3>
-        <div className="chord-list">
-          {[0,1,2,3,4,5,6].map((degree) => {
-            const chord = getChordForDegree(selectedKey, degree, selectedMode)
-            return (
-              <div 
-                key={degree} 
-                className="chord-item draggable" 
-                draggable
-                onDragStart={(e) => handleNoteDragStart(e, chord)}
-              >
-                <div className="chord-name">{chord.note}{chord.displayType}</div>
-                <div className="chord-roman">{chord.roman}</div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+
+      <ScaleDisplay selectedKey={selectedKey} selectedMode={selectedMode} onChordDragStart={handleNoteDragStart} onDragEnd={() => setDraggingType(null)} />
+
       <div className="grid">
         {bars.map((bar, barIndex) => (
-          <div key={bar.id} className="bar">
-            <div 
-              className="bar-header"
-              draggable
-              onDragStart={(e) => handleDragStart(e, barIndex)}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, barIndex)}
-              onDragEnd={handleDragEnd}
-            >
-              <div className="bar-title">
-                <input
-                  className="part-name-input"
-                  type="text"
-                  draggable={false}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  value={bar.name || `Part ${barIndex + 1}`}
-                  onChange={(e) => updateBarName(barIndex, e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
-                />
-                <div className="bar-settings">
-                </div>
-                <div className="repeat-input">
-                  <label>Repeat:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={bar.repeat}
-                    onChange={(e) => updateRepeat(barIndex, e.target.value)}
-                  />
-                  <label>Current:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={bar.repeat}
-                    value={bar.current}
-                    onChange={(e) => updateCurrent(barIndex, e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="bar-controls">
-                <button type="button" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); moveBar(barIndex, -1); }} disabled={barIndex === 0}>↑</button>
-                <button type="button" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); moveBar(barIndex, 1); }} disabled={barIndex === bars.length - 1}>↓</button>
-                <button type="button" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); cloneBar(barIndex); }}>Clone</button>
-                <button type="button" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); deleteBar(barIndex); }} disabled={bars.length === 1}>Delete</button>
-              </div>
-            </div>
-            <div className="steps" onDragOver={handleStepDragOver} onDrop={(e) => handleStepsDrop(e, barIndex)}>
-              {[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(stepIndex => renderStep(barIndex, stepIndex))}
-            </div>
-          </div>
+          <Bar
+            key={bar.id}
+            bar={bar}
+            barIndex={barIndex}
+            barsLength={bars.length}
+            updateBarName={updateBarName}
+            updateRepeat={updateRepeat}
+            updateCurrent={updateCurrent}
+            moveBar={moveBar}
+            cloneBar={cloneBar}
+            deleteBar={deleteBar}
+            handleDragStart={handleDragStart}
+            handleDragOver={handleDragOver}
+            handleDrop={handleDrop}
+            handleDragEnd={handleDragEnd}
+            progressions={CHORD_PROGRESSIONS}
+            applyProgressionToBar={applyProgressionToBar}
+            handleStepDragOver={handleStepDragOver}
+            handleStepDragEnter={handleStepDragEnter}
+            handleStepDragLeave={handleStepDragLeave}
+            handleStepDrop={handleStepDrop}
+            handleStepsDrop={handleStepsDrop}
+            dragOverCell={dragOverCell}
+            updateNote={updateNote}
+            removeNote={removeNote}
+            clearBar={clearBar}
+            handleMoveNoteDragStart={handleMoveNoteDragStart}
+            setIsResizing={setIsResizing}
+            setResizingData={setResizingData}
+          />
         ))}
       </div>
-      <button onClick={addBar} className="add-bar-btn">Add Part</button>
+      <button onClick={addBar} className="add-bar-btn">Agregar parte</button>
     </div>
   )
 }

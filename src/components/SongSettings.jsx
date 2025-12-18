@@ -4,12 +4,13 @@ import './SongSettings.css'
 const SongSettings = ({ songKey, progression, onKeyChange, onProgressionChange, currentBar, isPlaying }) => {
   const currentProgression = CHORD_PROGRESSIONS[progression]
   const currentMode = currentProgression?.mode || 'Major'
+  const modeLabel = currentMode === 'Minor' ? 'Menor' : 'Mayor'
   
   return (
     <div className="song-settings">
       {/* Key Selector Dropdown */}
       <div className="setting-group">
-        <span className="setting-label">Key</span>
+        <span className="setting-label">Tonalidad</span>
         <div className="dropdown-selector">
           <button className="dropdown-btn-main">
             {songKey}
@@ -31,18 +32,18 @@ const SongSettings = ({ songKey, progression, onKeyChange, onProgressionChange, 
 
       {/* Mode Display (read-only, from progression) */}
       <div className="setting-group">
-        <span className="setting-label">Mode</span>
+        <span className="setting-label">Modo</span>
         <div className="mode-display">
-          {currentMode}
+          {modeLabel}
         </div>
       </div>
 
       {/* Progression Selector */}
       <div className="setting-group">
-        <span className="setting-label">Prog</span>
+        <span className="setting-label">Progresión</span>
         <div className="dropdown-selector wide">
           <button className="dropdown-btn-main">
-            {currentProgression?.name || 'Select'}
+            {currentProgression?.name || 'Seleccionar'}
             <span className="arrow">▼</span>
           </button>
           <div className="dropdown-menu">

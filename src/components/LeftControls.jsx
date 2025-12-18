@@ -104,9 +104,9 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
             className="lc-bpm-action"
             onClick={handleTap}
             aria-label="Tap BPM"
-            title="Tap"
+            title="Tap tempo"
           >
-            Tap
+            Tap tempo
           </button>
           <button
             type="button"
@@ -115,13 +115,13 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
             aria-label="Reset BPM"
             title="Reset BPM"
           >
-            Reset
+            Reiniciar
           </button>
         </div>
       </div>
 
       <div className="lc-block">
-        <div className="lc-label">Key</div>
+        <div className="lc-label">Tonalidad</div>
         <div className="lc-prog-select-wrap">
           <select
             className="lc-prog-select"
