@@ -16,11 +16,15 @@ const PatternSelector = ({
 }) => {
   const [useCustomPattern, setUseCustomPattern] = useState(false)
 
+  // Normalize prop components to local variables so ESLint recognizes usage
+  const PatternAccordion = PatternAccordionComponent
+  const PatternEditor = PatternEditorComponent
+
   return (
     <div className="pattern-section">
       {/* Pattern Accordion Selector */}
       {!useCustomPattern && (
-        <PatternAccordionComponent
+        <PatternAccordion
           patterns={patterns}
           selectedIndex={selectedIndex}
           onSelect={(idx) => onPatternChange(idx)}
@@ -32,7 +36,7 @@ const PatternSelector = ({
 
       {/* Custom Pattern Editor */}
       {useCustomPattern && (
-        <PatternEditorComponent
+        <PatternEditor
           pattern={customPattern || Array(16).fill(0)}
           onChange={(p) => onCustomPatternChange(p)}
           currentStep={currentStep}

@@ -1,7 +1,6 @@
 import { getChordForDegree } from './secuenciadorHelpers'
 
 const ScaleDisplay = ({ selectedKey, selectedMode, onChordDragStart, onDragEnd }) => {
-  const modeLabel = selectedMode === 'Minor' ? 'Menor' : 'Mayor'
   return (
     <div className="scale-display">
       <div className="chord-list">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const BarHeader = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, updateCurrent, moveBar, cloneBar, deleteBar, addBar, handleDragOver, handleDrop, handleDragEnd, clearBar, progressions = [], applyProgressionToBar }) => {
+const BarHeader = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, moveBar, cloneBar, deleteBar, addBar, handleDragOver, handleDrop, handleDragEnd, clearBar, progressions = [], applyProgressionToBar }) => {
   const [selectedProg, setSelectedProg] = useState(progressions && progressions.length ? 0 : -1)
   return (
     <div
