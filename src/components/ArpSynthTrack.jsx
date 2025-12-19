@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { ARP_PATTERNS, WAVE_TYPES, ARP_SOUND_PRESETS } from '../constants/arp'
+import { ARP_SYNTH_PATTERNS, WAVE_TYPES, ARP_SYNTH_SOUND_PRESETS } from '../constants/arpSynth'
 import Knob from './Knob'
 import TrackHead from './TrackHead'
 import SoundPresets from './SoundPresets'
 import PatternSelector from './PatternSelector'
-import './BassTrack.css' // reuse bass styles for consistency
+import './MonoSynthTrack.css' // reuse mono synth styles for consistency
 
 // Pattern step editor for arp (16 steps per bar, repeats each bar)
 const ArpPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) => {
@@ -171,14 +171,14 @@ const ArpTrack = ({
 
       {/* Sound Presets */}
       <SoundPresets 
-        presets={ARP_SOUND_PRESETS}
+        presets={ARP_SYNTH_SOUND_PRESETS}
         onApplyPreset={handleSoundPreset}
         color={track.color}
       />
 
       {/* Pattern Section */}
       <PatternSelector
-        patterns={ARP_PATTERNS}
+        patterns={ARP_SYNTH_PATTERNS}
         selectedIndex={selectedPattern}
         customPattern={customPattern}
         onPatternChange={(idx) => onPatternChange(track.id, idx)}

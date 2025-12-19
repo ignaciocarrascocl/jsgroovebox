@@ -3,13 +3,12 @@ import HeaderRow from './components/HeaderRow'
 import Toast from './components/Toast'
 import MasterFX from './components/MasterFX'
 import Track from './components/Track'
-import BassTrack from './components/BassTrack'
-import ChordsTrack from './components/ChordsTrack'
-import ArpTrack from './components/ArpTrack'
+import BassTrack from './components/MonoSynthTrack'
+import ChordsTrack from './components/PolySynthTrack'
+import ArpTrack from './components/ArpSynthTrack'
 import Secuenciador from './components/Secuenciador'
 import { useAudioEngine } from './hooks/useAudioEngine'
 import { TRACKS, DEFAULT_PATTERNS } from './constants/tracks'
-import { CHORD_PATTERNS } from './constants/chords'
 import './App.css'
 
 // Default track parameters - tuned per instrument type
@@ -28,8 +27,8 @@ const DEFAULT_TRACK_PARAMS = {
   9: { volume: -6, pitch: 0, attack: 0.003, release: 0.15, filter: 4000, reverb: 0.2, delay: 0, compression: 0.5, swing: 0 },
 }
 
-// Default bass parameters (sound only, key/progression are global)
-const DEFAULT_BASS_PARAMS = {
+// Default mono synth parameters (sound only, key/progression are global)
+const DEFAULT_MONO_SYNTH_PARAMS = {
   6: { 
     volume: -6, 
     waveType: 'sawtooth', 
@@ -46,8 +45,8 @@ const DEFAULT_BASS_PARAMS = {
   },
 }
 
-// Default chord parameters (sound only, key/progression are global)
-const DEFAULT_CHORD_PARAMS = {
+// Default poly synth parameters (sound only, key/progression are global)
+const DEFAULT_POLY_SYNTH_PARAMS = {
   7: { 
     volume: -10, 
     waveType: 'sawtooth', 
@@ -68,8 +67,8 @@ const DEFAULT_CHORD_PARAMS = {
   },
 }
 
-// Default arpeggio/lead parameters (sound only)
-const DEFAULT_ARP_PARAMS = {
+// Default arp synth parameters (sound only)
+const DEFAULT_ARP_SYNTH_PARAMS = {
   8: {
     volume: -6,
     waveType: 'sawtooth',
@@ -133,9 +132,9 @@ function App() {
   const [selectedPatterns, setSelectedPatterns] = useState(DEFAULT_PATTERNS)
   const [customPatterns, setCustomPatterns] = useState({})
   const [trackParams, setTrackParams] = useState(DEFAULT_TRACK_PARAMS)
-  const [bassParams, setBassParams] = useState(DEFAULT_BASS_PARAMS)
-  const [chordParams, setChordParams] = useState(DEFAULT_CHORD_PARAMS)
-  const [arpParams, setArpParams] = useState(DEFAULT_ARP_PARAMS)
+  const [bassParams, setBassParams] = useState(DEFAULT_MONO_SYNTH_PARAMS)
+  const [chordParams, setChordParams] = useState(DEFAULT_POLY_SYNTH_PARAMS)
+  const [arpParams, setArpParams] = useState(DEFAULT_ARP_SYNTH_PARAMS)
   const [songSettings, setSongSettings] = useState(DEFAULT_SONG_SETTINGS)
   const [chordSteps, setChordSteps] = useState(null)
   const [mutedTracks, setMutedTracks] = useState({})
@@ -260,9 +259,9 @@ function App() {
     setSelectedPatterns(DEFAULT_PATTERNS)
     setCustomPatterns({})
     setTrackParams(DEFAULT_TRACK_PARAMS)
-    setBassParams(DEFAULT_BASS_PARAMS)
-    setChordParams(DEFAULT_CHORD_PARAMS)
-    setArpParams(DEFAULT_ARP_PARAMS)
+    setBassParams(DEFAULT_MONO_SYNTH_PARAMS)
+    setChordParams(DEFAULT_POLY_SYNTH_PARAMS)
+    setArpParams(DEFAULT_ARP_SYNTH_PARAMS)
     setSongSettings(DEFAULT_SONG_SETTINGS)
     setMutedTracks({})
     setSoloTracks({})
@@ -353,7 +352,7 @@ function App() {
     const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
     setSelectedPatterns(prev => ({ ...prev, 6: DEFAULT_PATTERNS[6] ?? 0 }))
     setCustomPatterns(prev => ({ ...prev, 6: null }))
-    setBassParams(DEFAULT_BASS_PARAMS)
+    setBassParams(DEFAULT_MONO_SYNTH_PARAMS)
     setMutedTracks(prev => ({ ...prev, 6: false }))
     setSoloTracks(prev => ({ ...prev, 6: false }))
     showUndoToast('Reset bass', snapshot)
@@ -363,7 +362,7 @@ function App() {
     const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
     setSelectedPatterns(prev => ({ ...prev, 7: DEFAULT_PATTERNS[7] ?? 0 }))
     setCustomPatterns(prev => ({ ...prev, 7: null }))
-    setChordParams(DEFAULT_CHORD_PARAMS)
+    setChordParams(DEFAULT_POLY_SYNTH_PARAMS)
     setMutedTracks(prev => ({ ...prev, 7: false }))
     setSoloTracks(prev => ({ ...prev, 7: false }))
     showUndoToast('Reset chords', snapshot)
@@ -373,7 +372,7 @@ function App() {
     const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
     setSelectedPatterns(prev => ({ ...prev, 8: DEFAULT_PATTERNS[8] ?? 0 }))
     setCustomPatterns(prev => ({ ...prev, 8: null }))
-    setArpParams(DEFAULT_ARP_PARAMS)
+    setArpParams(DEFAULT_ARP_SYNTH_PARAMS)
     setMutedTracks(prev => ({ ...prev, 8: false }))
     setSoloTracks(prev => ({ ...prev, 8: false }))
     showUndoToast('Reset arp', snapshot)
@@ -517,6 +516,13 @@ function App() {
                 />
               </div>
             </div>
+
+            <Secuenciador
+              showToast={showUndoToast}
+              onChordStepsChange={setChordSteps}
+              onSongSettingsChange={handleSongSettingsChange}
+            />
+
             <div className="tracks-grid">
               {visibleTracks.map((track) => (
                 <Track
@@ -619,11 +625,6 @@ function App() {
                 ) : null
               })()}
             </div>
-            <Secuenciador
-              showToast={showUndoToast}
-              onChordStepsChange={setChordSteps}
-              onSongSettingsChange={handleSongSettingsChange}
-            />
             {toast && (
               <Toast
                 message={toast.message}

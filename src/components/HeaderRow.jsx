@@ -1,6 +1,6 @@
 import './HeaderRow.css'
 import LeftControls from './LeftControls'
-import { CHORD_PATTERNS } from '../constants/chords'
+import { POLY_SYNTH_PATTERNS } from '../constants/polySynth'
 
 const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, bpm, onBpmChange, chordSteps, getCurrentChordStep, selectedPatterns, customPatterns, songSettings, startTone, toneStarted }) => {
   const usedMb = perf?.usedJSHeapSizeMb
@@ -44,7 +44,7 @@ const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, bpm, onBpmC
                   const step = getCurrentChordStep()
                   const stepData = chordSteps?.[step]
                   const chordPatternIndex = selectedPatterns?.[7] ?? 0
-                  const chordPattern = customPatterns?.[7] || CHORD_PATTERNS[chordPatternIndex]?.pattern || []
+                  const chordPattern = customPatterns?.[7] || POLY_SYNTH_PATTERNS[chordPatternIndex]?.pattern || []
                   const patternVal = chordPattern[step % 16]
                   const nonNullCount = chordSteps ? chordSteps.filter(Boolean).length : 0
                   return (
@@ -52,7 +52,7 @@ const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, bpm, onBpmC
                       <span className="debug-label">ChordStep:</span>
                       <span className="debug-value">{step}</span>
                       <span className="debug-label">StepData:</span>
-                      <span className="debug-value">{stepData ? `${stepData.root}${stepData.type ? ' '+stepData.type : ''}` : 'null'}</span>
+                      <span className="debug-value">{stepData ? (stepData.silent ? 'Silent' : `${stepData.root || 'NoRoot'}${stepData.type ? ' '+stepData.type : ''}`) : 'null'}</span>
                       <span className="debug-label">PatternVal:</span>
                       <span className="debug-value">{String(patternVal ?? '—')}</span>
                       <span className="debug-label">SongKey:</span>

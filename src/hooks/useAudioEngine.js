@@ -1,211 +1,35 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import * as Tone from 'tone'
+
+// Import constants
 import { PATTERNS } from '../constants/patterns'
-import { BASS_PATTERNS, BASS_TOTAL_STEPS } from '../constants/bass'
-import { CHORD_PATTERNS, CHORD_TOTAL_STEPS } from '../constants/chords'
+import { MONO_SYNTH_PATTERNS, MONO_SYNTH_TOTAL_STEPS } from '../constants/monoSynth'
+import { POLY_SYNTH_PATTERNS, POLY_SYNTH_TOTAL_STEPS } from '../constants/polySynth'
 import { CHORD_PROGRESSIONS } from '../constants/song'
-import { ARP_PATTERNS, ARP_TOTAL_STEPS } from '../constants/arp'
+import { ARP_SYNTH_PATTERNS, ARP_SYNTH_TOTAL_STEPS } from '../constants/arpSynth'
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+// Import utilities
+import {
+  clamp,
+  applyCompressionAmount,
+  pitchToMultiplier,
+  applyPercEnvelope,
+  createFilterStages
+} from '../utils/audioUtils.js'
+import {
+  getBassNote,
+  getChordNotes,
+  getBassNoteFromRoot,
+  getChordNotesFromRoot
+} from '../utils/musicTheory.js'
 
-
-const dbFromRms = (rms) => {
-  const v = Math.max(1e-8, rms ?? 0)
-  return 20 * Math.log10(v)
-}
-
-const applyCompressionAmount = (compressor, amount01) => {
-  if (!compressor) return
-
-  const a = clamp(amount01 ?? 0, 0, 1)
-  // Keep parameters in stable ranges for DynamicsCompressorNode.
-  // amount=0 => light compression, amount=1 => strong compression.
-  const threshold = -6 + (-30) * a // -6dB .. -36dB
-  const ratio = 1.5 + 18.5 * a // 1.5:1 .. 20:1
-
-  compressor.threshold.rampTo(threshold, 0.1)
-  compressor.ratio.rampTo(ratio, 0.1)
-}
-
-const pitchToMultiplier = (semitones) => Math.pow(2, (semitones ?? 0) / 12)
-
-const applyPercEnvelope = (envelope, attack, release) => {
-  if (!envelope) return
-  const a = Math.max(0.0005, attack ?? 0.001)
-  const r = Math.max(0.005, release ?? 0.1)
-
-  if (typeof envelope.attack === 'number') envelope.attack = a
-  if (typeof envelope.decay === 'number') envelope.decay = r
-  if (typeof envelope.release === 'number') envelope.release = r
-}
-
-// Create N filter stages (one Biquad per stage) to emulate steeper filter slopes
-const createFilterStages = (count, freq, type, q) => {
-  const stages = []
-  for (let i = 0; i < count; i++) {
-    const f = new Tone.Filter(freq, type)
-    if (f.Q) f.Q.value = q
-    stages.push(f)
-  }
-  return stages
-}
-
-// Scale degrees to semitones
-const SCALE_DEGREES_MAJOR = [0, 2, 4, 5, 7, 9, 11] // C D E F G A B
-const SCALE_DEGREES_MINOR = [0, 2, 3, 5, 7, 8, 10] // C D Eb F G Ab Bb (natural minor)
-
-// Get bass note for a given key, chord degree, note type, and mode
-const getBassNote = (key, chordDegree, noteType, mode = 'Major', octave = 1) => {
-  const keyIndex = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].indexOf(key)
-  const scaleDegrees = mode === 'Minor' ? SCALE_DEGREES_MINOR : SCALE_DEGREES_MAJOR
-  const chordRoot = scaleDegrees[chordDegree % 7]
-  const baseNote = (keyIndex + chordRoot) % 12
-  
-  let semitoneOffset = 0
-  let noteOctave = octave
-  
-  switch (noteType) {
-    case 1: // Root
-      semitoneOffset = 0
-      break
-    case 2: // Fifth
-      semitoneOffset = 7
-      break
-    case 3: // Octave
-      semitoneOffset = 0
-      noteOctave = octave + 1
-      break
-    default:
-      return null
-  }
-  
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-  const finalNote = (baseNote + semitoneOffset) % 12
-  const finalOctave = noteOctave + Math.floor((baseNote + semitoneOffset) / 12)
-  
-  return `${noteNames[finalNote]}${finalOctave}`
-}
-
-// Get chord notes for a given key, chord degree, chord type, and mode
-const getChordNotes = (key, chordDegree, chordType, mode = 'Major', octave = 3) => {
-  const keyIndex = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].indexOf(key)
-  const scaleDegrees = mode === 'Minor' ? SCALE_DEGREES_MINOR : SCALE_DEGREES_MAJOR
-  const chordRoot = scaleDegrees[chordDegree % 7]
-  const baseNote = (keyIndex + chordRoot) % 12
-  
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-  
-  // Determine if this chord should be major or minor based on scale degree
-  // Major scale: I=maj, ii=min, iii=min, IV=maj, V=maj, vi=min, vii°=dim
-  // Minor scale: i=min, ii°=dim, III=maj, iv=min, v=min, VI=maj, VII=maj
-  let thirdInterval = 4 // Major third by default
-  let seventhInterval = 10 // Minor seventh by default (dominant 7th)
-  
-  if (mode === 'Major') {
-    // Degrees that are minor in major scale: ii (1), iii (2), vi (5)
-    if (chordDegree === 1 || chordDegree === 2 || chordDegree === 5) {
-      thirdInterval = 3 // Minor third
-      seventhInterval = 10 // Minor seventh
-    } else if (chordDegree === 6) {
-      // vii° is diminished - minor third and diminished fifth
-      thirdInterval = 3 // Minor third
-      seventhInterval = 9 // Diminished seventh
-    } else {
-      // I (0), IV (3), V (4) are major
-      thirdInterval = 4 // Major third
-      seventhInterval = 11 // Major seventh for I and IV, 10 (minor 7th) for V
-      if (chordDegree === 4) {
-        seventhInterval = 10 // V7 uses dominant (minor) seventh
-      }
-    }
-  } else {
-    // Minor scale
-    // Degrees that are major in natural minor: III (2), VI (5), VII (6)
-    if (chordDegree === 2 || chordDegree === 5 || chordDegree === 6) {
-      thirdInterval = 4 // Major third
-      seventhInterval = 11 // Major seventh
-    } else if (chordDegree === 1) {
-      // ii° is diminished
-      thirdInterval = 3 // Minor third
-      seventhInterval = 9 // Diminished seventh
-    } else {
-      // i (0), iv (3), v (4) are minor
-      thirdInterval = 3 // Minor third
-      seventhInterval = 10 // Minor seventh
-    }
-  }
-  
-  // Helper to create note name with octave
-  const makeNote = (semitones, oct = octave) => {
-    const note = (baseNote + semitones) % 12
-    const actualOctave = oct + Math.floor((baseNote + semitones) / 12)
-    return `${noteNames[note]}${actualOctave}`
-  }
-  
-  switch (chordType) {
-    case 1: // Basic triad (root, third, fifth)
-      return [makeNote(0), makeNote(thirdInterval), makeNote(7)]
-    case 2: // Seventh chord (root, third, fifth, seventh)
-      return [makeNote(0), makeNote(thirdInterval), makeNote(7), makeNote(seventhInterval)]
-    case 3: // Inversion (third, fifth, root octave up)
-      return [makeNote(thirdInterval), makeNote(7), makeNote(12)]
-    case 4: // Stab (all notes in tight voicing)
-      return [makeNote(0), makeNote(thirdInterval), makeNote(7)]
-    default:
-      return null
-  }
-}
-
-// Helper: get bass note directly from absolute root string and noteType (1 = root, 2 = fifth, 3 = octave)
-const getBassNoteFromRoot = (root, noteType, octave = 1) => {
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-  const rootIndex = noteNames.indexOf(root)
-  if (rootIndex === -1) return null
-  let semitone = rootIndex
-  let oct = octave
-  switch (noteType) {
-    case 1:
-      break
-    case 2:
-      semitone = (rootIndex + 7) % 12
-      if (rootIndex + 7 >= 12) oct += 1
-      break
-    case 3:
-      oct += 1
-      break
-    default:
-      return null
-  }
-  const noteName = noteNames[semitone]
-  return `${noteName}${oct}`
-}
-
-// Helper: get chord notes from absolute root and a pattern value (1..4) and mode string (major/minor)
-const getChordNotesFromRoot = (root, patternValue, mode = 'Major', octave = 3) => {
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-  const rootIndex = noteNames.indexOf(root)
-  if (rootIndex === -1) return null
-  const isMinor = (mode && mode.toLowerCase().includes('min'))
-  const thirdInterval = isMinor ? 3 : 4
-  const seventhInterval = 10 // use minor seventh by default
-  const makeNote = (semitones, oct = octave) => {
-    const note = (rootIndex + semitones) % 12
-    const actualOctave = oct + Math.floor((rootIndex + semitones) / 12)
-    return `${noteNames[note]}${actualOctave}`
-  }
-  switch (patternValue) {
-    case 1:
-      return [makeNote(0), makeNote(thirdInterval), makeNote(7)]
-    case 2:
-      return [makeNote(0), makeNote(thirdInterval), makeNote(7), makeNote(seventhInterval)]
-    case 3:
-      return [makeNote(thirdInterval), makeNote(7), makeNote(12)]
-    case 4:
-      return [makeNote(0), makeNote(thirdInterval), makeNote(7)]
-    default:
-      return null
-  }
-} 
+// Import audio modules
+import { createDrumSynths, createMelodicSynths } from '../audio/synths.js'
+import { createTrackEffects } from '../audio/effects.js'
+import { createMixer, wireAudioGraph } from '../audio/mixer.js'
+import { createMetering } from '../audio/metering.js'
+import { startTone, togglePlay as modularTogglePlay, pause as modularPause } from '../audio/transport.js'
+import { playTrackNote, createSequencerCallback } from '../audio/sequencer.js'
 
 // Default track parameters - tuned per instrument type
 const DEFAULT_TRACK_PARAMS = {
@@ -216,6 +40,9 @@ const DEFAULT_TRACK_PARAMS = {
   5: { volume: -5, pitch: 0, attack: 0.001, release: 0.3, filter: 1200, reverb: 0.1, delay: 0, compression: 0.3, swing: 0 },
   9: { volume: -6, pitch: 0, attack: 0.003, release: 0.15, filter: 4000, reverb: 0.2, delay: 0, compression: 0.5, swing: 0 },
 }
+
+// Debug flag to enable/disable audio engine debug logs
+const DEBUG_AUDIO_LOGS = false
 
 export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = DEFAULT_TRACK_PARAMS, mutedTracks = {}, soloTracks = {}, bassParams = {}, chordParams = {}, arpParams = {}, songSettings = {}, chordSteps = null) => {
   const [toneStarted, setToneStarted] = useState(false)
@@ -235,18 +62,19 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const arpStepRef = useRef(0) // Track 64-step arp progression
   const [perfStats, setPerfStats] = useState({ fps: undefined, usedJSHeapSizeMb: undefined })
   const transportClearEventIdRef = useRef(null)
-  
+  // Guard to prevent rapid toggles from flooding the main thread
+  const isTogglingRef = useRef(false)
+  const bassStepRef = useRef(0) // Track 64-step bass progression
+  const chordStepRef = useRef(0) // Track 64-step chord progression
+  const chordStepsRef = useRef(chordSteps)
+
+  // Internal refs for synths/effects/mixer
   const synthsRef = useRef({})
   const effectsRef = useRef({})
   const mixerRef = useRef({})
   const leftPowerRef = useRef(1e-8)
   const rightPowerRef = useRef(1e-8)
   const sequencerEventIdRef = useRef(null)
-  // Guard to prevent rapid toggles from flooding the main thread
-  const isTogglingRef = useRef(false)
-  const bassStepRef = useRef(0) // Track 64-step bass progression
-  const chordStepRef = useRef(0) // Track 64-step chord progression
-  const chordStepsRef = useRef(chordSteps)
 
   useEffect(() => {
     try {
@@ -254,21 +82,22 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         // Normalize 16-step emissions to 64 steps by repeating across 4 bars
         let normalized = chordSteps
         if (chordSteps.length === 16) {
-          normalized = new Array(64).fill(null).map((_, i) => {
-            const v = chordSteps[i % 16]
+          // Expand each 16-step UI step into 4 consecutive 16th-note ticks (p*4..p*4+3)
+          normalized = Array.from({ length: 64 }, (_, i) => {
+            const v = chordSteps[Math.floor(i / 4)]
             return v ? { root: v.root, type: v.type, duration: v.duration } : null
           })
-          console.debug('audio:chordStepsRef normalized 16->64')
+          if (DEBUG_AUDIO_LOGS) console.debug('audio:chordStepsRef expanded 16->64 (blocks x4)')
         }
         chordStepsRef.current = normalized
         const nonNull = normalized.filter(Boolean).length
         const sample = normalized.map((s, i) => s ? `${i}:${s.root}${s.type ? ' '+s.type : ''}` : null).filter(Boolean).slice(0,6)
-        console.debug('audio:chordStepsRef updated', { nonNull, sample })
+        if (DEBUG_AUDIO_LOGS) console.debug('audio:chordStepsRef updated', { nonNull, sample })
       } else {
         chordStepsRef.current = chordSteps
-        console.debug('audio:chordStepsRef updated', { value: chordSteps })
+        if (DEBUG_AUDIO_LOGS) console.debug('audio:chordStepsRef updated', { value: chordSteps })
       }
-    } catch (e) {
+    } catch {
       // ignore logging errors
       chordStepsRef.current = chordSteps
     }
@@ -594,401 +423,31 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   }, [])
 
   // Helper function to check if a track should play
-  const shouldTrackPlay = (trackId) => {
-    const hasSolo = Object.values(soloTracksRef.current).some(v => v)
-    if (hasSolo) {
-      return soloTracksRef.current[trackId] === true
-    }
-    return !mutedTracksRef.current[trackId]
-  }
 
-  
 
   useEffect(() => {
     if (!toneStarted) return
 
-    // Master / buses / meters
-    const masterInput = new Tone.Gain(1)
-    const masterCompressor = new Tone.Compressor(-24, 2)
-  // Replace Tone.EQ3 with three configurable biquad filters so each band can have its own freq/Q/gain
-  const masterEQLow = new Tone.Filter(masterParamsRef.current.eqLowFreq ?? 100, 'lowshelf')
-  const masterEQMid = new Tone.Filter(masterParamsRef.current.eqMidFreq ?? 1000, 'peaking')
-  const masterEQHigh = new Tone.Filter(masterParamsRef.current.eqHighFreq ?? 8000, 'highshelf')
-    const initialSlope = (masterParamsRef.current.filterSlope ?? 24)
-    const initialStagesCount = Math.max(1, Math.round(initialSlope / 12))
-    const masterFilterStages = createFilterStages(initialStagesCount, masterParamsRef.current.filterCutoff ?? 20000, 'lowpass', masterParamsRef.current.filterReso ?? 0.7)
-    // Parallel comp mix: dry + wet summed into masterGain
-    const masterDry = new Tone.Gain(1)
-    const masterWet = new Tone.Gain(0)
-    const masterMakeup = new Tone.Gain(1)
+    // Create mixer and audio graph
+    const mixer = createMixer(masterParamsRef, busParamsRef)
+    mixerRef.current = mixer
+    masterNodeRef.current = mixer.masterGain
 
-    const masterGain = new Tone.Gain(1)
+    // Create track effects
+    effectsRef.current = createTrackEffects()
 
-  // Shared FX buses (send/return)
-  // If the mixer already has buses (e.g. re-initialization), reuse them instead of creating duplicates.
-  const existingMixer = mixerRef.current || {}
-  const reverb = existingMixer.reverb || new Tone.Reverb({ decay: busParamsRef.current.reverb?.decay ?? 1.8, wet: 1 })
-  const reverbReturn = existingMixer.reverbReturn || new Tone.Gain(1)
-  const reverbFilter = existingMixer.reverbFilter || new Tone.Filter(busParamsRef.current.reverb?.tone ?? 8000, 'lowpass')
+    // Create synths
+    const drumSynths = createDrumSynths()
+    const melodicSynths = createMelodicSynths()
+    synthsRef.current = { ...drumSynths, ...melodicSynths }
 
-  // Create both delay types and a filter for repeats; we'll switch between them when params change.
-  const feedbackDelay = existingMixer.feedbackDelay || new Tone.FeedbackDelay(busParamsRef.current.delay?.time ?? 0.25, busParamsRef.current.delay?.feedback ?? 0.25)
-  const pingPongDelay = existingMixer.pingPongDelay || new Tone.PingPongDelay(busParamsRef.current.delay?.time ?? 0.25, 0.5)
-  const delayFilter = existingMixer.delayFilter || new Tone.Filter(busParamsRef.current.delay?.filter ?? 8000, 'lowpass')
-  // Active delay node defaults to requested type (or feedback)
-  const delay = existingMixer.delay || (busParamsRef.current.delay?.type === 'pingpong' ? pingPongDelay : feedbackDelay)
-  if (!existingMixer.feedbackDelay && feedbackDelay?.wet?.rampTo) feedbackDelay.wet.rampTo(1, 0)
-  if (!existingMixer.pingPongDelay && pingPongDelay?.wet?.rampTo) pingPongDelay.wet.rampTo(1, 0)
-  const delayReturn = existingMixer.delayReturn || new Tone.Gain(1)
+    // Wire everything together
+    wireAudioGraph(synthsRef.current, effectsRef.current, mixer)
 
-    // Analyzer + meter
-    const waveformAnalyser = new Tone.Waveform(256)
-  const meter = new Tone.Meter({ channels: 1, normalRange: false })
-  // Debug meters for FX buses so we can detect whether sends/buses carry signal
-  const reverbMeter = new Tone.Meter({ channels: 1, normalRange: false })
-  const delayMeter = new Tone.Meter({ channels: 1, normalRange: false })
-  // Stereo peak meters (left/right) using a Split node so UI can display separate channel levels
-  const splitStereo = new Tone.Split()
-  const meterL = new Tone.Meter({ channels: 1, normalRange: false })
-  const meterR = new Tone.Meter({ channels: 1, normalRange: false })
-
-    // Routing:
-    // masterInput -> dry -> masterGain
-    // masterInput -> compressor -> makeup -> wet -> masterGain
-    // masterGain -> meter -> destination
-    masterInput.fan(masterDry, masterCompressor)
-    masterCompressor.chain(masterMakeup, masterWet)
-  masterDry.chain(masterEQLow, masterEQMid, masterEQHigh, ...masterFilterStages, masterGain)
-  masterWet.chain(masterEQLow, masterEQMid, masterEQHigh, ...masterFilterStages, masterGain)
-  masterGain.chain(meter, Tone.Destination)
-  masterGain.connect(waveformAnalyser)
-  // connect stereo meters (doesn't affect audio routing)
-  masterGain.connect(splitStereo)
-  // Tone.Split may not expose left/right in all versions; connect by channel index for robustness
-  try {
-    splitStereo.connect(meterL, 0, 0)
-    splitStereo.connect(meterR, 1, 0)
-  } catch {
-    // Fallback: try property-assisted connection if available
-    if (splitStereo.left && splitStereo.left.connect) splitStereo.left.connect(meterL)
-    if (splitStereo.right && splitStereo.right.connect) splitStereo.right.connect(meterR)
-  }
-
-  // Returns feed into master input (post-track FX)
-  // Only chain if we're using a newly created bus. If reusing, assume it's already wired.
-  if (!existingMixer.reverb) reverb.chain(reverbFilter, reverbReturn, masterInput)
-  if (!existingMixer.delay) delay.chain(delayFilter, delayReturn, masterInput)
-
-  // Tap FX returns to meters for debugging/visualization (non-critical)
-  try {
-    reverbReturn.connect(reverbMeter)
-    delayReturn.connect(delayMeter)
-  } catch {
-    // ignore
-  }
-
-    mixerRef.current = {
-      masterInput,
-      masterCompressor,
-      masterDry,
-      masterWet,
-      masterMakeup,
-  masterEQLow,
-  masterEQMid,
-  masterEQHigh,
-  masterFilterStages,
-  masterGain,
-  reverb,
-  reverbFilter,
-  reverbReturn,
-  feedbackDelay,
-  pingPongDelay,
-  delayFilter,
-  delay,
-  delayReturn,
-  waveformAnalyser,
-  reverbMeter,
-  delayMeter,
-  meter,
-      splitStereo,
-      meterL,
-      meterR,
-    }
-
-    // Expose masterGain so UI components can tap into the live master output.
-    masterNodeRef.current = masterGain
-
-    // Create effects for each track
-    effectsRef.current = {
-      kick: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(1000, 'lowpass'),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      snare: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(5000, 'lowpass'),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      hihat: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(8000, 'highpass'),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      openHH: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(8000, 'highpass'),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      tom: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(1200, 'lowpass'),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      clap: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(4000, 'bandpass'),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      bass: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(800, 'lowpass'),
-        distortion: new Tone.Distortion(0),
-        chorus: new Tone.Chorus(1.5, 3.5, 0.5),
-        lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      chords: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(2500, 'lowpass'),
-        distortion: new Tone.Distortion(0),
-        chorus: new Tone.Chorus(1.5, 3.5, 0.5),
-        lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-      arp: {
-        compressor: new Tone.Compressor(-30, 3),
-        filter: new Tone.Filter(1200, 'lowpass'),
-        distortion: new Tone.Distortion(0),
-        chorus: new Tone.Chorus(1.5, 3.5, 0.5),
-        lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
-        delaySend: new Tone.Gain(0),
-        reverbSend: new Tone.Gain(0),
-      },
-    }
-
-    // Wire track sends to shared buses (guarding in case buses are missing)
-    Object.values(effectsRef.current).forEach((fx) => {
-      if (mixerRef.current?.delay && fx?.delaySend) fx.delaySend.connect(mixerRef.current.delay)
-      if (mixerRef.current?.reverb && fx?.reverbSend) fx.reverbSend.connect(mixerRef.current.reverb)
-    })
-
-    // Kick
-    synthsRef.current.kick = new Tone.MembraneSynth({
-      pitchDecay: 0.05,
-      octaves: 6,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
-    })
-    synthsRef.current.kick.chain(
-      effectsRef.current.kick.compressor,
-      effectsRef.current.kick.filter,
-      mixerRef.current.masterInput
-    )
-    // Post-fader sends: connect the final stage (filter) to the send gains so send follows track level
-    if (effectsRef.current.kick?.filter) {
-      effectsRef.current.kick.filter.connect(effectsRef.current.kick.delaySend)
-      effectsRef.current.kick.filter.connect(effectsRef.current.kick.reverbSend)
-    }
-
-    // Snare
-    synthsRef.current.snare = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 }
-    })
-    synthsRef.current.snare.chain(
-      effectsRef.current.snare.compressor,
-      effectsRef.current.snare.filter,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.snare?.filter) {
-      effectsRef.current.snare.filter.connect(effectsRef.current.snare.delaySend)
-      effectsRef.current.snare.filter.connect(effectsRef.current.snare.reverbSend)
-    }
-
-    // HiHat
-    synthsRef.current.hihat = new Tone.MetalSynth({
-      frequency: 200,
-      envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
-      harmonicity: 5.1,
-      modulationIndex: 32,
-      resonance: 4000,
-      octaves: 1.5
-    })
-    synthsRef.current.hihat.chain(
-      effectsRef.current.hihat.compressor,
-      effectsRef.current.hihat.filter,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.hihat?.filter) {
-      effectsRef.current.hihat.filter.connect(effectsRef.current.hihat.delaySend)
-      effectsRef.current.hihat.filter.connect(effectsRef.current.hihat.reverbSend)
-    }
-    synthsRef.current.hihat.volume.value = -10
-
-    // Open HiHat
-    synthsRef.current.openHH = new Tone.MetalSynth({
-      frequency: 200,
-      envelope: { attack: 0.001, decay: 0.5, release: 0.1 },
-      harmonicity: 5.1,
-      modulationIndex: 32,
-      resonance: 4000,
-      octaves: 1.5
-    })
-    synthsRef.current.openHH.chain(
-      effectsRef.current.openHH.compressor,
-      effectsRef.current.openHH.filter,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.openHH?.filter) {
-      effectsRef.current.openHH.filter.connect(effectsRef.current.openHH.delaySend)
-      effectsRef.current.openHH.filter.connect(effectsRef.current.openHH.reverbSend)
-    }
-    synthsRef.current.openHH.volume.value = -10
-
-    // Tom
-    synthsRef.current.tom = new Tone.MembraneSynth({
-      pitchDecay: 0.08,
-      octaves: 4,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.001, decay: 0.3, sustain: 0.1, release: 0.5 }
-    })
-    synthsRef.current.tom.chain(
-      effectsRef.current.tom.compressor,
-      effectsRef.current.tom.filter,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.tom?.filter) {
-      effectsRef.current.tom.filter.connect(effectsRef.current.tom.delaySend)
-      effectsRef.current.tom.filter.connect(effectsRef.current.tom.reverbSend)
-    }
-    synthsRef.current.tom.volume.value = -5
-
-    // Clap
-    synthsRef.current.clap = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: { attack: 0.003, decay: 0.15, sustain: 0, release: 0.15 }
-    })
-    synthsRef.current.clap.chain(
-      effectsRef.current.clap.compressor,
-      effectsRef.current.clap.filter,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.clap?.filter) {
-      effectsRef.current.clap.filter.connect(effectsRef.current.clap.delaySend)
-      effectsRef.current.clap.filter.connect(effectsRef.current.clap.reverbSend)
-    }
-    synthsRef.current.clap.volume.value = -6
-
-    // Bass Synth
-    effectsRef.current.bass.filter.Q.value = 2
-    // Connect LFO to filter frequency
-    effectsRef.current.bass.lfo.connect(effectsRef.current.bass.filter.frequency)
-    // effectsRef.current.bass.lfo.start()  // Start only when playing
-    // Start chorus internal LFO if available
-    if (effectsRef.current.bass.chorus && typeof effectsRef.current.bass.chorus.start === 'function') {
-      effectsRef.current.bass.chorus.start()
-    }
-
-    synthsRef.current.bass = new Tone.MonoSynth({
-      oscillator: { type: 'sawtooth' },
-      envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.1 },
-      filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.2, baseFrequency: 200, octaves: 2 }
-    })
-    synthsRef.current.bass.chain(
-      effectsRef.current.bass.compressor,
-      effectsRef.current.bass.distortion,
-      effectsRef.current.bass.filter,
-      effectsRef.current.bass.chorus,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.bass?.filter) {
-      effectsRef.current.bass.filter.connect(effectsRef.current.bass.delaySend)
-      effectsRef.current.bass.filter.connect(effectsRef.current.bass.reverbSend)
-    }
-    synthsRef.current.bass.volume.value = -6
-
-    // Chord Synth - PolySynth for playing multiple notes
-    effectsRef.current.chords.filter.Q.value = 2
-    // Connect LFO to filter frequency
-    effectsRef.current.chords.lfo.connect(effectsRef.current.chords.filter.frequency)
-    // effectsRef.current.chords.lfo.start()  // Start only when playing
-    // Start chorus internal LFO if available
-    if (effectsRef.current.chords.chorus && typeof effectsRef.current.chords.chorus.start === 'function') {
-      effectsRef.current.chords.chorus.start()
-    }
-
-    synthsRef.current.chords = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'sawtooth' },
-      envelope: { attack: 0.05, decay: 0.4, sustain: 0.2, release: 0.3 },
-    })
-    synthsRef.current.chords.chain(
-      effectsRef.current.chords.compressor,
-      effectsRef.current.chords.distortion,
-      effectsRef.current.chords.filter,
-      effectsRef.current.chords.chorus,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.chords?.filter) {
-      effectsRef.current.chords.filter.connect(effectsRef.current.chords.delaySend)
-      effectsRef.current.chords.filter.connect(effectsRef.current.chords.reverbSend)
-    }
-    synthsRef.current.chords.volume.value = -10
-
-    // Arpeggio Synth
-    effectsRef.current.arp.filter.Q.value = 2
-    // Connect LFO to filter frequency
-    effectsRef.current.arp.lfo.connect(effectsRef.current.arp.filter.frequency)
-    // effectsRef.current.arp.lfo.start()  // Start only when playing
-    // Start chorus internal LFO if available
-    if (effectsRef.current.arp.chorus && typeof effectsRef.current.arp.chorus.start === 'function') {
-      effectsRef.current.arp.chorus.start()
-    }
-
-    synthsRef.current.arp = new Tone.MonoSynth({
-      oscillator: { type: 'sawtooth' },
-      envelope: { attack: 0.005, decay: 0.08, sustain: 0.1, release: 0.1 },
-      filterEnvelope: { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.05, baseFrequency: 400, octaves: 2 }
-    })
-    synthsRef.current.arp.chain(
-      effectsRef.current.arp.compressor,
-      effectsRef.current.arp.distortion,
-      effectsRef.current.arp.filter,
-      effectsRef.current.arp.chorus,
-      mixerRef.current.masterInput
-    )
-    if (effectsRef.current.arp?.filter) {
-      effectsRef.current.arp.filter.connect(effectsRef.current.arp.delaySend)
-      effectsRef.current.arp.filter.connect(effectsRef.current.arp.reverbSend)
-    }
-    synthsRef.current.arp.volume.value = -6
-
-    // Capture refs for cleanup
-    const synths = synthsRef.current
-    const effects = effectsRef.current
-    const mixer = mixerRef.current
-
+    // Cleanup function
     return () => {
-      Object.values(synths).forEach(synth => synth?.dispose())
-      Object.values(effects).forEach(fx => {
+      Object.values(synthsRef.current).forEach(synth => synth?.dispose())
+      Object.values(effectsRef.current).forEach(fx => {
         fx?.compressor?.dispose()
         fx?.filter?.dispose()
         fx?.lfo?.dispose()
@@ -1003,17 +462,17 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       mixer?.delay?.dispose()
       mixer?.delayReturn?.dispose()
       mixer?.masterCompressor?.dispose()
-    mixer?.masterEQLow?.dispose()
-  mixer?.masterEQMid?.dispose()
-  mixer?.masterEQHigh?.dispose()
-    if (mixer?.masterFilterStages) mixer.masterFilterStages.forEach(f => f?.dispose && f.dispose())
+      mixer?.masterEQLow?.dispose()
+      mixer?.masterEQMid?.dispose()
+      mixer?.masterEQHigh?.dispose()
+      if (mixer?.masterFilterStages) mixer.masterFilterStages.forEach(f => f?.dispose && f.dispose())
       mixer?.masterGain?.dispose()
       mixer?.masterInput?.dispose()
       mixer?.waveformAnalyser?.dispose()
       mixer?.meter?.dispose()
-  mixer?.splitStereo?.dispose()
-  mixer?.meterL?.dispose()
-  mixer?.meterR?.dispose()
+      mixer?.splitStereo?.dispose()
+      mixer?.meterL?.dispose()
+      mixer?.meterR?.dispose()
     }
   }, [toneStarted])
 
@@ -1124,97 +583,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
 
   // Meter + waveform polling
   useEffect(() => {
-    if (!toneStarted) return
-    // Only animate meter when transport is running.
-    // This freezes *all* UI elements driven by `masterMeter` (waveform + readouts + bars)
-    // when audio isn't actively playing.
-  if (!isPlaying) return
-    let raf = 0
-    let last = 0
-
-  // Reuse a single array to avoid allocating/copying 1024 samples every frame.
-    // We'll only publish to React state at a lower rate (see below).
-    let wfOut = []
-
-    const tick = () => {
-      const now = performance.now()
-      const mixer = mixerRef.current
-      const wf = mixer?.waveformAnalyser?.getValue?.() || []
-  const val = mixer?.meter?.getValue?.() ?? 0
-  const reverbVal = mixer?.reverbMeter?.getValue?.() ?? 0
-  const delayVal = mixer?.delayMeter?.getValue?.() ?? 0
-    const peak = Math.max(1e-8, Math.abs(val))
-    const peakDb = dbFromRms(peak)
-      // Meter may be peak-like. We'll approximate RMS from waveform.
-      let rms = 0
-      if (wf?.length) {
-        let s = 0
-        for (let i = 0; i < wf.length; i++) s += wf[i] * wf[i]
-        rms = Math.sqrt(s / wf.length)
-      }
-
-      // Publish ~30fps max. (Visuals will still look smooth, but CPU/GC drops a lot.)
-      if (now - last > 33) {
-        last = now
-
-        // Ensure we store a plain array. Prefer reusing the previous buffer when possible.
-        if (Array.isArray(wf)) {
-          wfOut = wf
-        } else {
-          const len = wf.length ?? 0
-          if (!wfOut || wfOut.length !== len) wfOut = Array.from({ length: len })
-          for (let i = 0; i < len; i++) wfOut[i] = wf[i]
-        }
-
-        const leftVal = mixer?.meterL?.getValue?.() ?? 0
-        const rightVal = mixer?.meterR?.getValue?.() ?? 0
-        const alpha = 0.75 // smoothing coefficient (higher = smoother)
-
-        const meterValueToDb = (v) => {
-          // Heuristic: if value looks like linear amplitude (<= 2), convert to dB; else assume it's already dB and clamp
-          if (Math.abs(v) <= 2) return dbFromRms(Math.max(1e-8, Math.abs(v)))
-          return Math.max(-120, Math.min(12, v))
-        }
-
-        // If inputs are linear amplitude values, update RMS smoothing; otherwise skip smoothing and use value directly
-        let leftRmsDb, rightRmsDb
-        if (Math.abs(leftVal) <= 2) {
-          leftPowerRef.current = alpha * leftPowerRef.current + (1 - alpha) * (leftVal * leftVal)
-          leftRmsDb = dbFromRms(Math.sqrt(Math.max(1e-12, leftPowerRef.current)))
-        } else {
-          leftRmsDb = meterValueToDb(leftVal)
-        }
-        if (Math.abs(rightVal) <= 2) {
-          rightPowerRef.current = alpha * rightPowerRef.current + (1 - alpha) * (rightVal * rightVal)
-          rightRmsDb = dbFromRms(Math.sqrt(Math.max(1e-12, rightPowerRef.current)))
-        } else {
-          rightRmsDb = meterValueToDb(rightVal)
-        }
-
-        const leftPeakDb = meterValueToDb(leftVal)
-        const rightPeakDb = meterValueToDb(rightVal)
-        const leftLufs = leftRmsDb // approximate
-        const rightLufs = rightRmsDb
-
-        setMasterMeter({
-          waveform: wfOut,
-          peakDb,
-          rmsDb: dbFromRms(rms),
-          leftPeakDb,
-          rightPeakDb,
-          leftRmsDb,
-          rightRmsDb,
-          leftLufs,
-          rightLufs,
-          reverbVal,
-          delayVal,
-        })
-      }
-      raf = requestAnimationFrame(tick)
-    }
-
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    return createMetering(mixerRef, isPlaying, setMasterMeter, leftPowerRef, rightPowerRef)
   }, [toneStarted, isPlaying])
 
   // Update track parameters in real-time (without recreating synths)
@@ -1501,303 +870,26 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     }
 
 
-    const seqCallback = (time, step) => {
-  currentStepRef.current = step
-        
-        // Read from refs to get current values without triggering re-renders
-        const currentSelectedPatterns = selectedPatternsRef.current
-        const currentCustomPatterns = customPatternsRef.current
-        const currentTrackParams = trackParamsRef.current
-        const currentSongSettings = songSettingsRef.current
-        
-        // Use custom pattern if available, otherwise use preset
-        const kickPattern = currentCustomPatterns[1] || PATTERNS.kick[currentSelectedPatterns[1]]?.pattern || []
-        const snarePattern = currentCustomPatterns[2] || PATTERNS.snare[currentSelectedPatterns[2]]?.pattern || []
-        const hihatPattern = currentCustomPatterns[3] || PATTERNS.hihat[currentSelectedPatterns[3]]?.pattern || []
-        const openHHPattern = currentCustomPatterns[4] || PATTERNS.openHH[currentSelectedPatterns[4]]?.pattern || []
-        const tomPattern = currentCustomPatterns[5] || PATTERNS.tom[currentSelectedPatterns[5]]?.pattern || []
-        const clapPattern = currentCustomPatterns[9] || PATTERNS.clap[currentSelectedPatterns[9]]?.pattern || []
-        
-        // Bass pattern - uses global song settings for key/progression
-        const bassPatternIndex = currentSelectedPatterns[6] ?? 0
-        const bassPattern = currentCustomPatterns[6] || BASS_PATTERNS[bassPatternIndex]?.pattern || []
-        const bassKey = currentSongSettings.key || 'C'
-        const bassProgressionIndex = currentSongSettings.progression ?? 0
-        const bassProgressionData = CHORD_PROGRESSIONS[bassProgressionIndex] || { chords: [0, 0, 0, 0], mode: 'Major' }
-        const bassProgression = bassProgressionData.chords
-        const bassMode = bassProgressionData.mode
-        
-        // Debug on first step
-  // NOTE: avoid console.log in the audio callback; it can tank performance over time.
+    const seqCallback = createSequencerCallback(
+      selectedPatternsRef,
+      customPatternsRef,
+      trackParamsRef,
+      songSettingsRef,
+      mutedTracksRef,
+      soloTracksRef,
+      chordStepsRef,
+      synthsRef,
+      currentStepRef,
+      currentBassStepRef,
+      currentChordStepRef,
+      currentArpStepRef,
+      bassStepRef,
+      chordStepRef,
+      arpStepRef,
+      setActiveTracks,
+      transportClearEventIdRef
+    )
 
-        const pitchOffset1 = currentTrackParams[1]?.pitch || 0
-        const pitchOffset3 = currentTrackParams[3]?.pitch || 0
-        const pitchOffset4 = currentTrackParams[4]?.pitch || 0
-        const pitchOffset5 = currentTrackParams[5]?.pitch || 0
-
-        // Swing: apply to the off-beat 8ths within each beat in a 16-step grid (steps 2,6,10,14).
-        // This makes swing affect common 8th patterns (0,2,4,6...) consistently.
-        // swing=1 => triplet feel: delay by 1/6 beat = (2/3)*16n.
-        const isSwingStep = step % 4 === 2
-        const sixteenthNoteDuration = Tone.Time('16n').toSeconds()
-
-        const getSwingOffset = (trackId) => {
-          if (!isSwingStep) return 0
-          const swing = clamp(currentTrackParams[trackId]?.swing ?? 0, 0, 1)
-          return swing * (sixteenthNoteDuration * (2 / 3))
-        }
-
-        // Track which tracks are active this step for visual feedback
-        const activeThisStep = {}
-        
-        if (kickPattern[step] && shouldTrackPlay(1)) {
-          const freq = Tone.Frequency('C1').transpose(pitchOffset1).toFrequency()
-          const swingOffset = getSwingOffset(1)
-          synthsRef.current.kick?.triggerAttackRelease(freq, '8n', time + swingOffset)
-          activeThisStep[1] = true
-        }
-        if (snarePattern[step] && shouldTrackPlay(2)) {
-          const swingOffset = getSwingOffset(2)
-          synthsRef.current.snare?.triggerAttackRelease('8n', time + swingOffset)
-          activeThisStep[2] = true
-        }
-        if (hihatPattern[step] && shouldTrackPlay(3)) {
-          const freq = Tone.Frequency('C6').transpose(pitchOffset3).toFrequency()
-          const swingOffset = getSwingOffset(3)
-          synthsRef.current.hihat?.triggerAttackRelease(freq, '32n', time + swingOffset)
-          activeThisStep[3] = true
-        }
-        if (openHHPattern[step] && shouldTrackPlay(4)) {
-          const freq = Tone.Frequency('C6').transpose(pitchOffset4).toFrequency()
-          const swingOffset = getSwingOffset(4)
-          synthsRef.current.openHH?.triggerAttackRelease(freq, '8n', time + swingOffset)
-          activeThisStep[4] = true
-        }
-        if (tomPattern[step] && shouldTrackPlay(5)) {
-          const freq = Tone.Frequency('C2').transpose(pitchOffset5).toFrequency()
-          const swingOffset = getSwingOffset(5)
-          synthsRef.current.tom?.triggerAttackRelease(freq, '8n', time + swingOffset)
-          activeThisStep[5] = true
-        }
-        if (clapPattern[step] && shouldTrackPlay(9)) {
-          const swingOffset = getSwingOffset(9)
-          synthsRef.current.clap?.triggerAttackRelease('8n', time + swingOffset)
-          activeThisStep[9] = true
-        }
-        
-        // Bass synth - 64-step progression (4 bars x 16 steps)
-        // Each chord lasts 1 bar (16 steps)
-        // Use ref for bass step to track position in 4-bar cycle
-        const bassStep = bassStepRef.current
-        bassStepRef.current = (bassStep + 1) % BASS_TOTAL_STEPS
-  currentBassStepRef.current = bassStep
-        
-        // Determine which bar we're in (0-3) based on the 64-step cycle
-        const barIndex = Math.floor(bassStep / 16)
-        const chordDegree = bassProgression[barIndex]
-        
-        // Get pattern step (patterns are 16 steps, repeat each bar)
-        const patternStep = bassStep % 16
-        const bassNoteType = bassPattern[patternStep]
-        
-        // Determine if Secuenciador is present (explicit controller). When present, it is authoritative:
-        // - if a stepChord exists -> use it
-        // - if stepChord is null -> do NOT fallback to progression (silence)
-        const hasSecuenciadorControl = Array.isArray(chordStepsRef.current)
-        if (hasSecuenciadorControl) {
-          const absoluteStep = bassStep
-          const stepChord = chordStepsRef.current?.[absoluteStep]
-          if (stepChord && stepChord.root) {
-            if (!shouldTrackPlay(6)) {
-              console.debug('audio:bassDecision - blocked by mute/solo', { absoluteStep, from: 'secuenciador', root: stepChord.root, type: stepChord.type, bassNoteType })
-            } else {
-              const bassNote = getBassNoteFromRoot(stepChord.root, bassNoteType || 1, 1)
-              console.debug('audio:bassDecision', { absoluteStep, from: 'secuenciador', root: stepChord.root, type: stepChord.type, bassNote, bassNoteType })
-              if (bassNote) {
-                synthsRef.current.bass?.triggerAttackRelease(bassNote, '8n', time)
-                activeThisStep[6] = true
-              }
-            }
-          } else {
-            console.debug('audio:bassDecision - secuenciador silent', { absoluteStep })
-            // Secuenciador explicitly silent for this step => do nothing
-          }
-        } else {
-          // No secuenciador control present: fallback to progression-based behavior
-          if (bassNoteType > 0 && shouldTrackPlay(6)) {
-            const bassNote = getBassNote(bassKey, chordDegree, bassNoteType, bassMode, 1)
-            console.debug('audio:bassDecision', { absoluteStep: bassStep, from: 'progression', chordDegree, bassNote })
-            if (bassNote) {
-              try {
-                const bassSynth = synthsRef.current.bass
-                console.debug('audio:bassTrigger - pre', { absoluteStep, bassNote, synthPresent: !!bassSynth, synthVolume: bassSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
-                bassSynth?.triggerAttackRelease(bassNote, '8n', time)
-                activeThisStep[6] = true
-                console.debug('audio:bassTrigger - fired', { absoluteStep })
-              } catch (err) {
-                console.error('audio:bassTrigger - error', { absoluteStep, err })
-              }
-            }
-          }
-        }
-
-        // Chord synth - 64-step progression (4 bars x 16 steps)
-        // Each chord lasts 1 bar (16 steps), follows same progression as bass
-        const chordPatternIndex = currentSelectedPatterns[7] ?? 0
-        const chordPattern = currentCustomPatterns[7] || CHORD_PATTERNS[chordPatternIndex]?.pattern || []
-        
-        const chordStep = chordStepRef.current
-        chordStepRef.current = (chordStep + 1) % CHORD_TOTAL_STEPS
-  currentChordStepRef.current = chordStep
-        
-        // Determine which bar we're in (0-3) based on the 64-step cycle
-        const chordBarIndex = Math.floor(chordStep / 16)
-        const chordChordDegree = bassProgression[chordBarIndex]
-        
-        // Get pattern step (patterns are 16 steps, repeat each bar)
-        const chordPatternStep = chordStep % 16
-        const chordType = chordPattern[chordPatternStep]
-        
-        const hasSecuenciadorControlChords = Array.isArray(chordStepsRef.current)
-        if (hasSecuenciadorControlChords) {
-          const absoluteStep = chordStep
-          const stepChord = chordStepsRef.current?.[absoluteStep]
-          if (stepChord && stepChord.root) {
-            if (!shouldTrackPlay(7)) {
-              console.debug('audio:chordDecision - blocked by mute/solo', { absoluteStep, from: 'secuenciador', stepChord: `${stepChord.root} ${stepChord.type}` })
-            } else {
-              // Trigger chords only on onset (first step of the chord), not every step of its duration
-              const prevStep = chordStepsRef.current?.[absoluteStep - 1]
-              const isOnset = !prevStep || prevStep.root !== stepChord.root || prevStep.type !== stepChord.type
-              if (isOnset) {
-                const rawPatternVal = chordPattern[absoluteStep % 16]
-                const patternVal = (typeof rawPatternVal === 'number' && rawPatternVal > 0) ? rawPatternVal : 1 // default to triad if pattern is silent or undefined when secuenciador provides a chord
-                const chordNotes = getChordNotesFromRoot(stepChord.root, patternVal, stepChord.type || bassMode, 3)
-                console.debug('audio:chordDecision - onset', { absoluteStep, from: 'secuenciador', stepChord: `${stepChord.root} ${stepChord.type}`, patternVal, durationSteps: stepChord.duration })
-                if (chordNotes) {
-                  // Compute duration from stepChord.duration (in 16th-note steps)
-                  const stepCount = Math.max(1, Math.floor(stepChord.duration || 1))
-                  const durationSeconds = Tone.Time('16n').toSeconds() * stepCount
-                  // If pattern requests a stab, shorten to a single 16th
-                  const finalDuration = (patternVal === 4) ? Tone.Time('16n').toSeconds() : durationSeconds
-                  try {
-                    const chordSynth = synthsRef.current.chords
-                    console.debug('audio:chordTrigger - pre (secuenciador, onset)', { absoluteStep, chordNotes, synthPresent: !!chordSynth, synthVolume: chordSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value, finalDuration })
-                    chordSynth?.triggerAttackRelease(chordNotes, finalDuration, time)
-                    activeThisStep[7] = true
-                    console.debug('audio:chordTrigger - fired (secuenciador, onset)', { absoluteStep })
-                  } catch (err) {
-                    console.error('audio:chordTrigger - error (secuenciador, onset)', { absoluteStep, err })
-                  }
-                }
-              } else {
-                // sustain: mark active for UI but don't retrigger synth
-                activeThisStep[7] = true
-              }
-            }
-          } else {
-            console.debug('audio:chordDecision - secuenciador silent', { absoluteStep })
-            // secuenciador explicitly silent for this step => don't fallback to progression
-          }
-        } else {
-          if (chordType > 0 && shouldTrackPlay(7)) {
-            const chordNotes = getChordNotes(bassKey, chordChordDegree, chordType, bassMode, 3)
-            if (chordNotes) {
-              const duration = chordType === 4 ? '16n' : '4n'
-              try {
-                const chordSynth = synthsRef.current.chords
-                console.debug('audio:chordTrigger - pre (progression)', { absoluteStep: chordStep, chordNotes, synthPresent: !!chordSynth, synthVolume: chordSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
-                chordSynth?.triggerAttackRelease(chordNotes, duration, time)
-                activeThisStep[7] = true
-                console.debug('audio:chordTrigger - fired (progression)', { absoluteStep: chordStep })
-              } catch (err) {
-                console.error('audio:chordTrigger - error (progression)', { absoluteStep: chordStep, err })
-              }
-            }
-          }
-        }
-        
-        // Arp synth - 64-step progression (4 bars x 16 steps)
-        const arpPatternIndex = currentSelectedPatterns[8] ?? 0
-        const arpPattern = currentCustomPatterns[8] || ARP_PATTERNS[arpPatternIndex]?.pattern || []
-
-        const arpStep = arpStepRef.current
-        arpStepRef.current = (arpStep + 1) % ARP_TOTAL_STEPS
-  currentArpStepRef.current = arpStep
-
-        // Determine which bar we're in (0-3) based on the 64-step cycle
-        const arpBarIndex = Math.floor(arpStep / 16)
-        const arpChordDegree = bassProgression[arpBarIndex]
-
-        // Get pattern step (patterns are 16 steps, repeat each bar)
-        const arpPatternStep = arpStep % 16
-        const arpNoteType = arpPattern[arpPatternStep]
-
-        const hasSecuenciadorControlArp = Array.isArray(chordStepsRef.current)
-        if (hasSecuenciadorControlArp) {
-          const absoluteStep = arpStep
-          const stepChord = chordStepsRef.current?.[absoluteStep]
-          if (stepChord && stepChord.root && shouldTrackPlay(8)) {
-            const rawArpVal = arpPattern[arpStep % 16]
-            const effectiveArpType = (typeof rawArpVal === 'number' && rawArpVal > 0) ? rawArpVal : 1
-            const arpNotes = getChordNotesFromRoot(stepChord.root, effectiveArpType, stepChord.type || bassMode, 4)
-            console.debug('audio:arpDecision', { absoluteStep, from: 'secuenciador', stepChord: `${stepChord.root} ${stepChord.type}`, arpPatternVal: arpPattern[arpStep % 16] })
-            if (arpNotes) {
-              const note = arpNotes[0]
-              try {
-                const arpSynth = synthsRef.current.arp
-                console.debug('audio:arpTrigger - pre (secuenciador)', { absoluteStep, note, synthPresent: !!arpSynth, synthVolume: arpSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
-                arpSynth?.triggerAttackRelease(note, '16n', time)
-                activeThisStep[8] = true
-                console.debug('audio:arpTrigger - fired (secuenciador)', { absoluteStep })
-              } catch (err) {
-                console.error('audio:arpTrigger - error (secuenciador)', { absoluteStep, err })
-              }
-            }
-          } else {
-            // secuenciador explicitly silent for this step => do nothing
-          }
-        } else {
-          if (arpNoteType > 0 && shouldTrackPlay(8)) {
-            const effectiveArpType = arpNoteType
-            const arpNotes = getChordNotes(bassKey, arpChordDegree, effectiveArpType, bassMode, 4)
-            if (arpNotes) {
-              const note = arpNotes[0]
-              console.debug('audio:arpDecision', { absoluteStep: arpStep, from: 'progression', arpNoteType: effectiveArpType })
-              try {
-                const arpSynth = synthsRef.current.arp
-                console.debug('audio:arpTrigger - pre (progression)', { absoluteStep: arpStep, note, synthPresent: !!arpSynth, synthVolume: arpSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
-                arpSynth?.triggerAttackRelease(note, '16n', time)
-                activeThisStep[8] = true
-                console.debug('audio:arpTrigger - fired (progression)', { absoluteStep: arpStep })
-              } catch (err) {
-                console.error('audio:arpTrigger - error (progression)', { absoluteStep: arpStep, err })
-              }
-            }
-          }
-        }
-        
-        // Update active tracks once per step with all active tracks
-        if (Object.keys(activeThisStep).length > 0) {
-          setActiveTracks(activeThisStep)
-
-          // Cancel any previously scheduled clear to avoid building up a queue
-          // when CPU is under pressure.
-          if (transportClearEventIdRef.current != null) {
-            try {
-              Tone.getTransport().clear(transportClearEventIdRef.current)
-            } catch {
-              // ignore
-            }
-            transportClearEventIdRef.current = null
-          }
-
-          transportClearEventIdRef.current = Tone.getTransport().scheduleOnce(() => {
-            setActiveTracks({})
-            transportClearEventIdRef.current = null
-          }, time + 0.1)
-        }
-      }
 
     // Schedule transport repeat using seqCallback (16th notes)
     if (sequencerEventIdRef.current != null) {
@@ -1833,108 +925,19 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     isTogglingRef.current = true
     window.setTimeout(() => { isTogglingRef.current = false }, 300)
 
-    if (isPlaying) {
-      // Immediately update UI state so user sees feedback quickly
-      setIsPlaying(false)
-      currentStepRef.current = 0
-      currentBassStepRef.current = 0
-      currentChordStepRef.current = 0
-      currentArpStepRef.current = 0
-      setUiStepPulse((p) => (p + 1) % 1000000)
-      bassStepRef.current = 0
-      chordStepRef.current = 0
-      arpStepRef.current = 0
+    modularTogglePlay(isPlaying, setIsPlaying, currentStepRef, currentBassStepRef, currentChordStepRef, currentArpStepRef, setUiStepPulse, bassStepRef, chordStepRef, arpStepRef, transportClearEventIdRef, effectsRef)
 
-      // Defer heavier transport/sequence operations to avoid blocking the click handler
-      setTimeout(() => {
-        try {
-          Tone.getTransport().stop('+0.001')
-          Tone.getTransport().cancel()
-        } catch {
-          // ignore errors stopping the transport (best-effort)
-        }
-
-        if (transportClearEventIdRef.current != null) {
-          try {
-            Tone.getTransport().clear(transportClearEventIdRef.current)
-          } catch {
-            // ignore
-          }
-          transportClearEventIdRef.current = null
-        }
-
-        // Stop LFOs to save CPU when not playing
-        try {
-          effectsRef.current.bass?.lfo?.stop()
-          effectsRef.current.chords?.lfo?.stop()
-          effectsRef.current.arp?.lfo?.stop()
-        } catch {
-          // ignore LFO stop errors (best-effort)
-        }
-
-        // Clamp Tone.now() to >= 0 and add a tiny offset to avoid floating point negatives
-        // No explicit sequence stop required; stopping the Transport is sufficient.
-      }, 0)
-    } else {
-      const transport = Tone.getTransport()
-
-      // If transport is paused, resume in place.
-      if (transport.state === 'paused') {
-        // Start LFOs when resuming
-        try {
-          effectsRef.current.bass?.lfo?.start()
-          effectsRef.current.chords?.lfo?.start()
-          effectsRef.current.arp?.lfo?.start()
-        } catch {
-          // ignore LFO start errors (best-effort)
-        }
-        transport.start('+0.05')
-        // Do NOT restart sequencer to avoid resetting position.
-        setIsPlaying(true)
-        return
-      }
-
-      // Fresh start from the beginning
-      transport.position = 0
-      bassStepRef.current = 0
-      chordStepRef.current = 0
-      arpStepRef.current = 0
-      currentStepRef.current = 0
-      currentBassStepRef.current = 0
-      currentChordStepRef.current = 0
-      currentArpStepRef.current = 0
-      setUiStepPulse((p) => (p + 1) % 1000000)
-
-      // Start LFOs for modulation when playing
+    // Log secuenciador snapshot once when play is pressed (only when starting, not stopping)
+    if (!isPlaying) {
       try {
-        effectsRef.current.bass?.lfo?.start()
-        effectsRef.current.chords?.lfo?.start()
-        effectsRef.current.arp?.lfo?.start()
-      } catch {
-        // ignore LFO start errors (best-effort)
-      }
-
-      transport.start('+0.1')
-
-      setIsPlaying(true)
+        const arr = Array.isArray(chordStepsRef.current) ? chordStepsRef.current : null
+        console.debug('audio:secuenciadorExportOnPlay', { length: arr?.length ?? null, sample: arr?.map((s, i) => s ? `${i}:${s.root}${s.type ? ' '+s.type : ''}` : null).filter(Boolean).slice(0,20) })
+      } catch { /* ignore */ }
     }
   }, [isPlaying])
 
   const pause = useCallback(() => {
-    if (!toneStarted) return
-    if (!isPlaying) return
-    // Pause keeps position so we can resume.
-    Tone.getTransport().pause()
-    // Keep the sequencer scheduled; it's driven by Transport time.
-    setIsPlaying(false)
-    // Stop LFOs when paused
-    try {
-      effectsRef.current.bass?.lfo?.stop()
-      effectsRef.current.chords?.lfo?.stop()
-      effectsRef.current.arp?.lfo?.stop()
-    } catch {
-      // ignore LFO stop errors (best-effort)
-    }
+    modularPause(toneStarted, isPlaying, setIsPlaying, effectsRef)
   }, [isPlaying, toneStarted])
 
   const playTrack = useCallback((trackId) => {

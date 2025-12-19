@@ -1,6 +1,6 @@
-// Arpeggio (Arp) patterns - 16 steps per bar, pattern repeats each bar
+// Arp Synth patterns - 16 steps per bar, pattern repeats each bar
 // Each step can be 0-3: 0=rest, 1=first chord note, 2=second chord note, 3=third chord note (or octave)
-export const ARP_PATTERNS = [
+export const ARP_SYNTH_PATTERNS = [
   { name: 'Off', pattern: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
   { name: 'Sparse', pattern: [1,0,0,0, 0,0,1,0, 0,0,0,0, 0,1,0,0] },
   { name: '8th Arp', pattern: [1,0,2,0, 1,0,3,0, 1,0,2,0, 1,0,3,0] },
@@ -16,8 +16,8 @@ export const ARP_PATTERNS = [
 
 export const WAVE_TYPES = ['sine', 'triangle', 'sawtooth', 'square']
 
-// Arp sound presets - simple combinations of synth parameters
-export const ARP_SOUND_PRESETS = [
+// Arp Synth sound presets - simple combinations of synth parameters
+export const ARP_SYNTH_SOUND_PRESETS = [
   { name: 'Plucky Arp', waveType: 'triangle', waveShape: 0.1, detune: 0, volume: -6, filter: 1800, resonance: 1.2, attack: 0.005, decay: 0.08, release: 0.08, lfoRate: 0, lfoDepth: 0, compression: 0, drive: 0, chorus: 0, reverb: 0.05, delay: 0 },
   { name: 'Bright Arp', waveType: 'sawtooth', waveShape: 0.2, detune: 6, volume: -6, filter: 3200, resonance: 2, attack: 0.002, decay: 0.12, release: 0.12, lfoRate: 0.1, lfoDepth: 30, compression: 0.1, drive: 0.02, chorus: 0.05, reverb: 0.08, delay: 0.02 },
   { name: 'Bell Arp', waveType: 'triangle', waveShape: 0.4, detune: 12, volume: -8, filter: 6000, resonance: 3.5, attack: 0.001, decay: 1.2, release: 1.2, lfoRate: 0.3, lfoDepth: 60, compression: 0.15, drive: 0, chorus: 0.08, reverb: 0.2, delay: 0.03 },
@@ -39,4 +39,4 @@ export const ARP_SOUND_PRESETS = [
   { name: 'Chime', waveType: 'triangle', waveShape: 0.35, detune: 10, volume: -7, filter: 4800, resonance: 4, attack: 0.001, decay: 1.8, release: 1.8, lfoRate: 0.5, lfoDepth: 150, compression: 0.15, drive: 0, chorus: 0.05, reverb: 0.2, delay: 0.02 },
 ]
 
-export const ARP_TOTAL_STEPS = 64
+export const ARP_SYNTH_TOTAL_STEPS = 64

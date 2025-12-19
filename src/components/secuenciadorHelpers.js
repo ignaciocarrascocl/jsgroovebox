@@ -26,14 +26,16 @@ export const CHORD_NAMES_MINOR = [
 
 export function getChordForDegree(key, degree, mode) {
   const keyIndex = NOTES.indexOf(key)
-  const noteIndex = (keyIndex + degree) % 12
+  const scaleDegrees = mode === 'Major' ? [0, 2, 4, 5, 7, 9, 11] : [0, 2, 3, 5, 7, 8, 10]
+  const semitone = scaleDegrees[degree % 7]
+  const noteIndex = (keyIndex + semitone) % 12
   const note = NOTES[noteIndex]
   
   const scale = mode === 'Major' ? MAJOR_SCALE : MINOR_SCALE
   const chordTypes = mode === 'Major' ? CHORD_NAMES_MAJOR : CHORD_NAMES_MINOR
   
-  const roman = scale[degree]
-  let type = chordTypes[degree]
+  const roman = scale[degree % 7]
+  let type = chordTypes[degree % 7]
   
   // Map short types to full values for consistency
   if (type === 'maj') type = 'major'

@@ -1,5 +1,4 @@
 import React from 'react'
-import './FilterViz.css'
 
 // kept for historical compatibility; new code uses db->pixel mapping directly
 

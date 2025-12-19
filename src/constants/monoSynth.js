@@ -1,10 +1,10 @@
 // Keys available
 export const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-// Bass patterns - 16 steps per bar, pattern repeats each bar
+// Mono Synth patterns - 16 steps per bar, pattern repeats each bar
 // Each step can be 0-3: 0=rest, 1=root, 2=fifth, 3=octave
 // The pattern is applied to each bar, chord changes every 16 steps
-export const BASS_PATTERNS = [
+export const MONO_SYNTH_PATTERNS = [
   // Basic patterns
   { name: 'Straight 4', pattern: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0] },
   { name: 'Octave Jump', pattern: [1,0,3,0, 1,0,3,0, 1,0,3,0, 1,0,3,0] },
@@ -35,8 +35,8 @@ export const BASS_PATTERNS = [
 // Wave types for synth
 export const WAVE_TYPES = ['sine', 'triangle', 'sawtooth', 'square']
 
-// Bass sound presets - combinations of synth parameters
-export const BASS_SOUND_PRESETS = [
+// Mono Synth sound presets - combinations of synth parameters
+export const MONO_SYNTH_SOUND_PRESETS = [
   { name: 'Sub Bass', waveType: 'sine', waveShape: 0, detune: 0, volume: -6, filter: 200, resonance: 1, attack: 0.01, decay: 0.5, release: 0.4, lfoRate: 0, lfoDepth: 0, compression: 0.3, drive: 0, chorus: 0, reverb: 0, delay: 0 },
   { name: 'Classic', waveType: 'sawtooth', waveShape: 0.5, detune: 5, volume: -6, filter: 800, resonance: 2, attack: 0.01, decay: 0.3, release: 0.3, lfoRate: 0, lfoDepth: 0, compression: 0.4, drive: 0.05, chorus: 0.05, reverb: 0.05, delay: 0 },
   { name: 'Acid', waveType: 'sawtooth', waveShape: 0.6, detune: 10, volume: -6, filter: 400, resonance: 12, attack: 0.001, decay: 0.2, release: 0.2, lfoRate: 4, lfoDepth: 300, compression: 0.5, drive: 0.1, chorus: 0, reverb: 0, delay: 0 },
@@ -58,4 +58,4 @@ export const BASS_SOUND_PRESETS = [
 ]
 
 // Total steps for full progression (4 bars x 16 steps)
-export const BASS_TOTAL_STEPS = 64
+export const MONO_SYNTH_TOTAL_STEPS = 64

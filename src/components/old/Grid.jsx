@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import './Secuenciador.css'
+import './Grid.css'
 
-import { KEYS } from './secuenciadorHelpers'
+import { KEYS } from './gridHelpers'
 import ScaleDisplay from './ScaleDisplay'
 import Bar from './Bar'
 import { CHORD_PROGRESSIONS } from '../constants/song'
-import { getChordForDegree } from './secuenciadorHelpers'
+import { getChordForDegree } from './gridHelpers'
 
-const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) => {
+const Grid = () => {
   const [bars, setBars] = useState([
     { id: 1, name: 'Parte 1', notes: [], repeat: 1, current: 1, key: 'C', mode: 'Major' } // notes: [{ start: 0, duration: 1, root: 'C', type: 'major' }]
   ])
@@ -19,7 +19,6 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
   const [dragOverCell, setDragOverCell] = useState({ barIndex: null, stepIndex: null, valid: false })
   const [draggingType, setDraggingType] = useState(null)
   const nextNoteIdRef = useRef(1)
-  const lastEmittedStepsRef = useRef('')
 
   const updateBarName = (barIndex, name) => {
     const newBars = [...bars]
@@ -44,18 +43,17 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     const bar = bars[barIndex]
     const existing = bar.notes.find(n => n.start <= start && start < n.start + n.duration)
     if (!existing) {
-      const id = nextNoteIdRef.current++
-      const newNote = { id, start, duration: 1, root, type }
-      const newBar = { ...bar, notes: [...(bar.notes || []), newNote] }
       const newBars = [...bars]
-      newBars[barIndex] = newBar
+      const id = nextNoteIdRef.current++
+      newBars[barIndex].notes.push({ id, start, duration: 1, root, type })
       setBars(newBars)
     }
   }
 
   const updateNote = useCallback((barIndex, noteIndex, updates) => {
-    const bar = bars[barIndex]
-    const origNote = bar?.notes?.[noteIndex]
+    const newBars = [...bars]
+    const bar = newBars[barIndex]
+    const origNote = bar.notes[noteIndex]
     if (!origNote) return
 
     const updatedNote = { ...origNote, ...updates }
@@ -63,34 +61,26 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     updatedNote.start = Math.max(0, Math.min(15, updatedNote.start))
     updatedNote.duration = Math.max(1, Math.min(16 - updatedNote.start, updatedNote.duration || origNote.duration))
 
-    // Build a new notes array immutably
-    let newNotes = bar.notes.map((n, idx) => (idx === noteIndex ? updatedNote : n))
+    // Apply update
+    bar.notes[noteIndex] = updatedNote
 
     // If start/duration changed, remove any other notes overlapping the updated range
     if ('duration' in updates || 'start' in updates) {
       const start = updatedNote.start
       const end = updatedNote.start + updatedNote.duration
-      newNotes = newNotes.filter((n, idx) => {
+      bar.notes = bar.notes.filter((n, idx) => {
         if (idx === noteIndex) return true
         // Keep notes that don't overlap
         return !(n.start < end && start < n.start + n.duration)
       })
     }
 
-    const newBar = { ...bar, notes: newNotes }
-    const newBars = [...bars]
-    newBars[barIndex] = newBar
-
     setBars(newBars)
   }, [bars])
 
   const removeNote = (barIndex, noteIndex) => {
-    const bar = bars[barIndex]
-    if (!bar) return
-    const newNotes = bar.notes.filter((_, idx) => idx !== noteIndex)
-    const newBar = { ...bar, notes: newNotes }
     const newBars = [...bars]
-    newBars[barIndex] = newBar
+    newBars[barIndex].notes.splice(noteIndex, 1)
     setBars(newBars)
   }
 
@@ -106,7 +96,6 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     if (bars.length > 1) {
       const newBars = bars.filter((_, index) => index !== barIndex)
       setBars(newBars)
-      showToast?.('Parte eliminada')
     }
   }
 
@@ -114,10 +103,8 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
   const clearBar = (barIndex) => {
     const newBars = [...bars]
     if (!newBars[barIndex]) return
-    if (!newBars[barIndex].notes || newBars[barIndex].notes.length === 0) return
     newBars[barIndex] = { ...newBars[barIndex], notes: [] }
     setBars(newBars)
-    showToast?.('Acordes limpiados')
   }
 
   const cloneBar = (barIndex) => {
@@ -146,8 +133,10 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     const bar = bars[barIndex]
     if (!bar) return
 
-    // Overwrite existing chords without confirmation
-    // previously this asked the user to confirm
+    // Ask user to confirm overwrite if there are existing chords
+    if (bar.notes && bar.notes.length > 0) {
+      if (!window.confirm('Esto sobrescribirá los acordes existentes en esta parte. ¿Desea continuar?')) return
+    }
 
     // Use the song-level selected key and the progression's declared mode
     const keyToUse = selectedKey
@@ -169,8 +158,6 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     const newBars = [...bars]
     newBars[barIndex] = { ...newBars[barIndex], notes: newNotes, key: keyToUse, mode: modeToUse }
     setBars(newBars)
-    // Notify user that a progression was applied (replaces any existing chords)
-    showToast?.('Progresión aplicada')
   }
 
   const moveBar = (barIndex, direction) => {
@@ -224,7 +211,7 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
   }
 
   const handleNoteDragStart = (e, chord) => {
-    // console.debug('handleNoteDragStart', chord)
+    console.debug('handleNoteDragStart', chord)
     e.dataTransfer.setData('type', 'chord')
     e.dataTransfer.setData('chord', JSON.stringify(chord))
     // also set a text/plain payload for browsers that require it
@@ -241,7 +228,6 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     e.dataTransfer.setData('type', 'move-note')
     e.dataTransfer.setData('barIndex', barIndex)
     e.dataTransfer.setData('noteId', noteId)
-    // debug: removed console logging
     // Some browsers expect a text/plain payload to consider the drag valid
     e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'move-note', barIndex, noteId }))
     e.dataTransfer.effectAllowed = 'move'
@@ -255,7 +241,7 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     // dropEffect matches that; otherwise default to 'copy' (for adding new chords).
     const dragType = e.dataTransfer.getData('type') || ''
     const allowed = e.dataTransfer.effectAllowed || ''
-    // console.debug('handleStepDragOver', { dragType, allowed })
+    console.debug('handleStepDragOver', { dragType, allowed })
     if (dragType === 'move-note' || allowed.indexOf('move') !== -1) {
       e.dataTransfer.dropEffect = 'move'
     } else {
@@ -295,7 +281,7 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     const allowed = e.dataTransfer.effectAllowed || ''
     // Some browsers don't expose custom data on dragenter; fall back to effectAllowed
     const valid = (dragType === 'chord' || dragType === 'move-note' || allowed.indexOf('copy') !== -1 || allowed.indexOf('move') !== -1)
-    // console.debug('handleStepDragEnter', { dragType, allowed, barIndex, stepIndex, valid })
+    console.debug('handleStepDragEnter', { dragType, allowed, barIndex, stepIndex, valid })
     if (valid) {
       e.preventDefault()
       setDragOverCell({ barIndex, stepIndex, valid: true })
@@ -343,39 +329,37 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     const dragType = e.dataTransfer.getData('type')
     if (dragType === 'chord') {
       const chordData = JSON.parse(e.dataTransfer.getData('chord'))
-      // debug: removed console logging
+      console.log('Dragged chord data:', chordData)
       const bar = bars[barIndex]
       const existing = bar.notes.find(n => n.start <= stepIndex && stepIndex < n.start + n.duration)
       if (!existing) {
+        const newBars = [...bars]
         // New chords should start with duration 1 by default
         const id = nextNoteIdRef.current++
-        const newNote = { id, start: stepIndex, duration: 1, root: chordData.note, type: chordData.type }
-        const newBar = { ...bar, notes: [...(bar.notes || []), newNote], key: chordData.note, mode: (chordData.type.includes('min') || chordData.type === 'dim') ? 'Minor' : 'Major' }
-        const newBars = [...bars]
-        newBars[barIndex] = newBar
-        // debug: removed console logging
+        newBars[barIndex].notes.push({ id, start: stepIndex, duration: 1, root: chordData.note, type: chordData.type })
+        newBars[barIndex].key = chordData.note
+        newBars[barIndex].mode = (chordData.type.includes('min') || chordData.type === 'dim') ? 'Minor' : 'Major'
+        console.log('Setting bar mode to:', newBars[barIndex].mode)
         setBars(newBars)
       }
     } else if (dragType === 'move-note') {
       const dragBarIndex = parseInt(e.dataTransfer.getData('barIndex'))
       const dragNoteId = parseInt(e.dataTransfer.getData('noteId'))
-      // debug: removed console logging
-      const originBar = bars[dragBarIndex]
+      console.log(`Moving note id ${dragNoteId} from bar ${dragBarIndex} to ${barIndex}:${stepIndex}`)
+      const newBars = [...bars]
+      // Find and remove the dragged note from its origin
+      const originBar = newBars[dragBarIndex]
       const draggedIndex = originBar.notes.findIndex(n => n.id === dragNoteId)
       if (draggedIndex === -1) return
-      const draggedNote = originBar.notes[draggedIndex]
+      const draggedNote = originBar.notes.splice(draggedIndex, 1)[0]
       // Calculate new start and duration, ensuring it doesn't exceed 16 steps
       const newStart = stepIndex
       const newDuration = Math.min(draggedNote.duration, 16 - newStart)
-      // Remove dragged note from origin and any overlapping notes in the target bar immutably
-      const newOriginNotes = originBar.notes.filter(n => n.id !== dragNoteId)
-      const targetBar = bars[barIndex]
-      const filteredTargetNotes = (targetBar.notes || []).filter(n => !(n.start < newStart + newDuration && newStart < n.start + n.duration))
-      const newTargetNotes = [...filteredTargetNotes, { ...draggedNote, start: newStart, duration: newDuration }]
-
-      const newBars = [...bars]
-      newBars[dragBarIndex] = { ...originBar, notes: newOriginNotes }
-      newBars[barIndex] = { ...targetBar, notes: newTargetNotes }
+      // Remove any overlapping notes in the target bar
+      const targetBar = newBars[barIndex]
+      targetBar.notes = targetBar.notes.filter(n => !(n.start < newStart + newDuration && newStart < n.start + n.duration))
+      // Add dragged note to target
+      targetBar.notes.push({ ...draggedNote, start: newStart, duration: newDuration })
       setBars(newBars)
     }
   }
@@ -413,88 +397,28 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
     }
   }, [isResizing, resizingData, updateNote])
 
-  // Export chord steps for audio engine (64-step cycle: first 4 bars)
-  useEffect(() => {
-    if (typeof onChordStepsChange !== 'function') return
-    if (!bars || bars.length === 0) {
-      onChordStepsChange(Array.from({ length: 64 }, () => null))
-      return
-    }
-    // Build 4 bars by repeating or truncating bars
-    const barsToUse = []
-    for (let i = 0; i < 4; i++) {
-      barsToUse.push(bars[i % bars.length] || { notes: [], key: selectedKey, mode: selectedMode })
-    }
-
-    // Build coarse 16-step sequence (one step per sequencer step in the first bar)
-    const coarse = Array.from({ length: 16 })
-    for (let p = 0; p < 16; p++) {
-      const barIdx = 0 // Only use first bar
-      const stepInBar = p // 0 to 15
-      const bar = barsToUse[barIdx] || { notes: [], key: selectedKey, mode: selectedMode }
-      const notes = bar.notes || []
-      const candidates = notes.filter(n => n.start <= stepInBar && stepInBar < n.start + (n.duration || 1))
-      if (candidates.length === 0) {
-        coarse[p] = { silent: true }
-        continue
-      }
-      candidates.sort((a, b) => {
-        const d = (b.duration || 1) - (a.duration || 1)
-        if (d !== 0) return d
-        return a.start - b.start
-      })
-      const n = candidates[0]
-      coarse[p] = { root: n.root || bar.key || selectedKey || 'C', type: n.type || (bar.mode === 'Minor' ? 'minor' : 'major') || 'major', duration: n.duration || 1 }
-    }
-
-    // Expand coarse 16 -> 64 by repeating each coarse step 4 times consecutively
-    const steps = Array.from({ length: 64 })
-    for (let p = 0; p < 16; p++) {
-      const v = coarse[p]
-      for (let k = 0; k < 4; k++) {
-        steps[p * 4 + k] = v && !v.silent ? { root: v.root, type: v.type, duration: v.duration } : { silent: true }
-      }
-    }
-
-    try {
-      const serialized = JSON.stringify(steps)
-      if (serialized === lastEmittedStepsRef.current) return
-      onChordStepsChange(steps)
-      lastEmittedStepsRef.current = serialized
-    } catch { /* ignore */ }
-  }, [bars, selectedKey, selectedMode, onChordStepsChange])
-
-  // Notify parent of song-level key changes (optional)
-  useEffect(() => {
-    if (typeof onSongSettingsChange === 'function') {
-      onSongSettingsChange({ key: selectedKey })
-    }
-  }, [selectedKey, onSongSettingsChange])
-
   return (
     <div className="grid-container">
       <h2>Partes de la canción</h2>
-      <div className="top-row">
-        <div className="song-settings">
-          <div className="setting-group">
-            <label>Tonalidad:</label>
-            <select value={selectedKey} onChange={(e) => setSelectedKey(e.target.value)}>
-              {KEYS.map(key => (
-                <option key={key} value={key}>{key}</option>
-              ))}
-            </select>
-          </div>
-          <div className="setting-group">
-            <label>Modo:</label>
-            <select value={selectedMode} onChange={(e) => setSelectedMode(e.target.value)}>
-              <option value="Major">Mayor</option>
-              <option value="Minor">Menor</option>
-            </select>
-          </div>
+      <div className="song-settings">
+        <div className="setting-group">
+          <label>Tonalidad:</label>
+          <select value={selectedKey} onChange={(e) => setSelectedKey(e.target.value)}>
+            {KEYS.map(key => (
+              <option key={key} value={key}>{key}</option>
+            ))}
+          </select>
         </div>
-
-        <ScaleDisplay selectedKey={selectedKey} selectedMode={selectedMode} onChordDragStart={handleNoteDragStart} onDragEnd={() => setDraggingType(null)} />
+        <div className="setting-group">
+          <label>Modo:</label>
+          <select value={selectedMode} onChange={(e) => setSelectedMode(e.target.value)}>
+            <option value="Major">Mayor</option>
+            <option value="Minor">Menor</option>
+          </select>
+        </div>
       </div>
+
+      <ScaleDisplay selectedKey={selectedKey} selectedMode={selectedMode} onChordDragStart={handleNoteDragStart} onDragEnd={() => setDraggingType(null)} />
 
       <div className="grid">
         {bars.map((bar, barIndex) => (
@@ -508,7 +432,6 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
             updateCurrent={updateCurrent}
             moveBar={moveBar}
             cloneBar={cloneBar}
-            addBar={addBar}
             deleteBar={deleteBar}
             handleDragStart={handleDragStart}
             handleDragOver={handleDragOver}
@@ -531,9 +454,9 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
           />
         ))}
       </div>
-
+      <button onClick={addBar} className="add-bar-btn">Agregar parte</button>
     </div>
   )
 }
 
-export default Secuenciador
+export default Grid

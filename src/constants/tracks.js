@@ -6,9 +6,9 @@ export const TRACKS = [
   { id: 4, name: 'Open HH', color: '#3498db', shape: 'torus' },
   { id: 5, name: 'Tom', color: '#9b59b6', shape: 'cylinder' },
   { id: 9, name: 'Clap', color: '#ff6b6b', shape: 'tetrahedron' },
-  { id: 6, name: 'Bass', color: '#1abc9c', shape: 'octahedron' },
-  { id: 7, name: 'Chords', color: '#e91e63', shape: 'dodecahedron' },
-  { id: 8, name: 'Lead', color: '#00bcd4', shape: 'icosahedron' },
+  { id: 6, name: 'Mono Synth', color: '#1abc9c', shape: 'octahedron' },
+  { id: 7, name: 'Poly Synth', color: '#e91e63', shape: 'dodecahedron' },
+  { id: 8, name: 'Arp Synth', color: '#00bcd4', shape: 'icosahedron' },
 ]
 
 // Default pattern selections

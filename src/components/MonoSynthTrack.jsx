@@ -1,25 +1,24 @@
 import { useState } from 'react'
-import { CHORD_PATTERNS, WAVE_TYPES, CHORD_SOUND_PRESETS } from '../constants/chords'
+import { MONO_SYNTH_PATTERNS, WAVE_TYPES, MONO_SYNTH_SOUND_PRESETS } from '../constants/monoSynth'
 import Knob from './Knob'
 import TrackHead from './TrackHead'
 import SoundPresets from './SoundPresets'
 import PatternSelector from './PatternSelector'
-import './ChordsTrack.css'
+import './MonoSynthTrack.css'
 
-// Pattern step editor for chords (16 steps per bar, repeats each bar)
-const ChordPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) => {
+// Pattern step editor for bass (16 steps per bar, repeats each bar)
+const BassPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) => {
   const cycleStep = (index) => {
     const newPattern = [...pattern]
-    newPattern[index] = (newPattern[index] + 1) % 5 // 0, 1, 2, 3, 4
+    newPattern[index] = (newPattern[index] + 1) % 4 // 0, 1, 2, 3
     onChange(newPattern)
   }
 
   const getStepLabel = (value) => {
     switch (value) {
-      case 1: return 'T'  // Triad
-      case 2: return '7'  // Seventh
-      case 3: return 'I'  // Inversion
-      case 4: return 'S'  // Stab
+      case 1: return 'R'  // Root
+      case 2: return '5'  // Fifth
+      case 3: return 'O'  // Octave
       default: return ''
     }
   }
@@ -28,11 +27,11 @@ const ChordPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }
   const patternStep = currentStep % 16
 
   return (
-    <div className="chord-pattern-editor">
+    <div className="bass-pattern-editor">
       {pattern.map((step, idx) => (
         <div
           key={idx}
-          className={`chord-pattern-step step-type-${step} ${isPlaying && patternStep === idx ? 'current' : ''} ${idx % 4 === 0 ? 'beat-start' : ''}`}
+          className={`bass-pattern-step step-type-${step} ${isPlaying && patternStep === idx ? 'current' : ''} ${idx % 4 === 0 ? 'beat-start' : ''}`}
           style={{ '--step-color': color }}
           onClick={() => cycleStep(idx)}
         >
@@ -43,8 +42,8 @@ const ChordPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }
   )
 }
 
-// Chord pattern accordion selector
-const ChordPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, isPlaying, color }) => {
+// Bass pattern accordion selector - like drum tracks
+const BassPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, isPlaying, color }) => {
   const [isOpen, setIsOpen] = useState(false)
 
   // currentStep is 0-63, pattern step is 0-15 (repeats each bar)
@@ -57,14 +56,14 @@ const ChordPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep,
     setIsOpen(false)
   }
 
-  // Get step type class for chord patterns (0, 1, 2, 3, 4)
+  // Get step type class for bass patterns (0, 1, 2, 3)
   const getStepClass = (step) => {
     if (step === 0) return ''
     return `step-type-${step}`
   }
 
   return (
-    <div className="chord-pattern-accordion" style={{ '--accordion-color': color }}>
+    <div className="bass-pattern-accordion" style={{ '--accordion-color': color }}>
       {/* Header - Selected Pattern */}
       <div className="accordion-header" onClick={() => setIsOpen(!isOpen)}>
         <div className="header-pattern">
@@ -105,12 +104,12 @@ const ChordPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep,
   )
 }
 
-const ChordsTrack = ({
+const BassTrack = ({
   track,
   isActive,
   selectedPattern,
   customPattern,
-  chordParams,
+  bassParams,
   currentStep,
   isPlaying,
   isMuted,
@@ -127,35 +126,34 @@ const ChordsTrack = ({
 }) => {
 
   const handleParamChange = (param, value) => {
-    onParamChange(track.id, { ...chordParams, [param]: value })
+    onParamChange(track.id, { ...bassParams, [param]: value })
   }
 
   const handleSoundPreset = (preset) => {
     onParamChange(track.id, { 
-      ...chordParams, 
+      ...bassParams, 
       waveType: preset.waveType,
-      waveShape: preset.waveShape ?? chordParams?.waveShape ?? 0,
-      volume: preset.volume ?? chordParams?.volume ?? -10,
-      filter: preset.filter ?? chordParams?.filter ?? 2500,
-      resonance: preset.resonance ?? chordParams?.resonance ?? 2,
-      attack: preset.attack ?? chordParams?.attack ?? 0.05,
-      decay: preset.decay ?? chordParams?.decay ?? 0.4,
-      release: preset.release ?? chordParams?.release ?? 0.3,
-      detune: preset.detune ?? chordParams?.detune ?? 5,
-      lfoRate: preset.lfoRate ?? chordParams?.lfoRate ?? 0,
-      lfoDepth: preset.lfoDepth ?? chordParams?.lfoDepth ?? 0,
-      lfoWave: preset.lfoWave ?? chordParams?.lfoWave ?? 'sine',
-      compression: preset.compression ?? chordParams?.compression ?? 0.3,
-      drive: preset.drive ?? chordParams?.drive ?? 0,
-      chorus: preset.chorus ?? chordParams?.chorus ?? 0,
-      reverb: preset.reverb ?? chordParams?.reverb ?? 0.2,
-      delay: preset.delay ?? chordParams?.delay ?? 0
+      waveShape: preset.waveShape ?? bassParams?.waveShape ?? 0,
+      detune: preset.detune ?? bassParams?.detune ?? 0,
+      volume: preset.volume ?? bassParams?.volume ?? -6,
+      filter: preset.filter ?? bassParams?.filter ?? 800,
+      resonance: preset.resonance ?? bassParams?.resonance ?? 1,
+      attack: preset.attack ?? bassParams?.attack ?? 0.01,
+      decay: preset.decay ?? bassParams?.decay ?? 0.3,
+      release: preset.release ?? bassParams?.release ?? 0.3,
+      lfoRate: preset.lfoRate ?? bassParams?.lfoRate ?? 0,
+      lfoDepth: preset.lfoDepth ?? bassParams?.lfoDepth ?? 0,
+      compression: preset.compression ?? bassParams?.compression ?? 0,
+      drive: preset.drive ?? bassParams?.drive ?? 0,
+      chorus: preset.chorus ?? bassParams?.chorus ?? 0,
+      reverb: preset.reverb ?? bassParams?.reverb ?? 0,
+      delay: preset.delay ?? bassParams?.delay ?? 0,
     })
   }
 
   return (
     <div
-      className={`chord-track ${!isAudible ? 'muted' : ''} ${activeResetTarget === `track-${track.id}` ? 'just-reset' : ''}`}
+      className={`bass-track ${!isAudible ? 'muted' : ''} ${activeResetTarget === `track-${track.id}` ? 'just-reset' : ''}`}
       style={{ '--track-color': track.color }}
     >
       {/* Wave Visualizer Header */}
@@ -173,14 +171,14 @@ const ChordsTrack = ({
 
       {/* Sound Presets */}
       <SoundPresets 
-        presets={CHORD_SOUND_PRESETS}
+        presets={MONO_SYNTH_SOUND_PRESETS}
         onApplyPreset={handleSoundPreset}
         color={track.color}
       />
 
       {/* Pattern Section */}
       <PatternSelector
-        patterns={CHORD_PATTERNS}
+        patterns={MONO_SYNTH_PATTERNS}
         selectedIndex={selectedPattern}
         customPattern={customPattern}
         onPatternChange={(idx) => onPatternChange(track.id, idx)}
@@ -188,36 +186,36 @@ const ChordsTrack = ({
         currentStep={currentStep}
         isPlaying={isPlaying}
         color={track.color}
-        PatternAccordionComponent={ChordPatternAccordion}
-        PatternEditorComponent={ChordPatternEditor}
+        PatternAccordionComponent={BassPatternAccordion}
+        PatternEditorComponent={BassPatternEditor}
       />
 
-      {/* Controls Section - All Knobs */}
-      <div className="chord-track-controls">
-        <div className="chord-knobs-section">
+      {/* Controls Section - All Knobs (8 total like percussion tracks) */}
+      <div className="bass-track-controls">
+        <div className="bass-knobs-section">
           {/* placeholder for layout balance */}
           <div style={{ width: '100%' }} />
           <div style={{ width: '100%' }} />
           <div style={{ width: '100%' }} />
         </div>
 
-        {/* Wave section (styled like LFO/FX) */}
+        {/* Wave section */}
         <div className="wave-section">
           <div className="wave-header">Wave</div>
           <div className="wave-knobs">
             <Knob 
               label="Wave" 
-              value={WAVE_TYPES.indexOf(chordParams?.waveType || 'sawtooth')} 
+              value={WAVE_TYPES.indexOf(bassParams?.waveType || 'sawtooth')} 
               min={0} 
               max={WAVE_TYPES.length - 1} 
               step={1}
               onChange={(v) => handleParamChange('waveType', WAVE_TYPES[Math.round(v)])}
-              displayValue={WAVE_TYPES[Math.round(WAVE_TYPES.indexOf(chordParams?.waveType || 'sawtooth'))].slice(0, 3).toUpperCase()}
+              displayValue={WAVE_TYPES[Math.round(WAVE_TYPES.indexOf(bassParams?.waveType || 'sawtooth'))].slice(0, 3).toUpperCase()}
               color={track.color}
             />
             <Knob
               label="Shape"
-              value={chordParams?.waveShape ?? 0}
+              value={bassParams?.waveShape ?? 0}
               min={0}
               max={1}
               step={0.01}
@@ -226,7 +224,7 @@ const ChordsTrack = ({
             />
             <Knob 
               label="Detune" 
-              value={chordParams?.detune ?? 5} 
+              value={bassParams?.detune ?? 5} 
               min={0} 
               max={30} 
               onChange={(v) => handleParamChange('detune', v)}
@@ -234,30 +232,30 @@ const ChordsTrack = ({
             />
             <Knob 
               label="Volume" 
-              value={chordParams?.volume ?? -10} 
+              value={bassParams?.volume ?? -6} 
               min={-60} 
               max={6} 
               onChange={(v) => handleParamChange('volume', v)}
               color={track.color}
             />
-           </div>
-         </div>
+          </div>
+        </div>
 
-        {/* Filter section (styled like LFO/FX) */}
+        {/* Filter section */}
         <div className="filter-section">
           <div className="filter-header">Filter</div>
           <div className="filter-knobs">
             <Knob 
               label="Filter" 
-              value={chordParams?.filter ?? 2500} 
-              min={200} 
-              max={8000} 
+              value={bassParams?.filter ?? 800} 
+              min={60} 
+              max={4000} 
               onChange={(v) => handleParamChange('filter', v)}
               color={track.color}
             />
             <Knob 
               label="Reso" 
-              value={chordParams?.resonance ?? 2} 
+              value={bassParams?.resonance ?? 1} 
               min={0.5} 
               max={15} 
               onChange={(v) => handleParamChange('resonance', v)}
@@ -265,55 +263,47 @@ const ChordsTrack = ({
             />
           </div>
         </div>
+
         <div className="lfo-section">
           <div className="lfo-header">LFO</div>
           <div className="lfo-knobs">
-            <Knob
-              label="LFO Rate"
-              value={chordParams?.lfoRate ?? 0}
-              min={0}
-              max={10}
+            <Knob 
+              label="LFO Rate" 
+              value={bassParams?.lfoRate ?? 0} 
+              min={0} 
+              max={10} 
               onChange={(v) => handleParamChange('lfoRate', v)}
               color={track.color}
               size={44}
             />
-            <Knob
-              label="LFO Depth"
-              value={chordParams?.lfoDepth ?? 0}
-              min={0}
-              max={500}
+            <Knob 
+              label="LFO Depth" 
+              value={bassParams?.lfoDepth ?? 0} 
+              min={0} 
+              max={500} 
               onChange={(v) => handleParamChange('lfoDepth', v)}
-              color={track.color}
-              size={44}
-            />
-            <Knob
-              label="LFO Wave"
-              value={WAVE_TYPES.indexOf(chordParams?.lfoWave || 'sine')}
-              min={0}
-              max={WAVE_TYPES.length - 1}
-              step={1}
-              onChange={(v) => handleParamChange('lfoWave', WAVE_TYPES[Math.round(v)])}
-              displayValue={WAVE_TYPES[Math.round(WAVE_TYPES.indexOf(chordParams?.lfoWave || 'sine'))].slice(0, 3).toUpperCase()}
               color={track.color}
               size={44}
             />
           </div>
         </div>
+
+        {/* FX section */}
         <div className="fx-section">
           <div className="fx-header">FX</div>
           <div className="fx-knobs">
-            <Knob
-              label="Comp"
-              value={chordParams?.compression ?? 0.3}
-              min={0}
-              max={1}
+            <Knob 
+              label="Comp" 
+              value={bassParams?.compression ?? 0.4} 
+              min={0} 
+              max={1} 
               onChange={(v) => handleParamChange('compression', v)}
               color={track.color}
               size={44}
             />
             <Knob
               label="Drive"
-              value={chordParams?.drive ?? 0}
+              value={bassParams?.drive ?? 0}
               min={0}
               max={1}
               step={0.01}
@@ -323,7 +313,7 @@ const ChordsTrack = ({
             />
             <Knob
               label="Chorus"
-              value={chordParams?.chorus ?? 0}
+              value={bassParams?.chorus ?? 0}
               min={0}
               max={1}
               step={0.01}
@@ -333,30 +323,32 @@ const ChordsTrack = ({
             />
           </div>
         </div>
+
+        {/* ADSR section */}
         <div className="adsr-section">
           <div className="adsr-header">ADSR</div>
           <div className="adsr-knobs">
             <Knob
               label="Attack"
-              value={chordParams?.attack ?? 0.05}
+              value={bassParams?.attack ?? 0.01}
               min={0.001}
-              max={1.5}
+              max={0.3}
               onChange={(v) => handleParamChange('attack', v)}
               color={track.color}
               size={44}
             />
             <Knob
               label="Decay"
-              value={chordParams?.decay ?? 0.4}
+              value={bassParams?.decay ?? 0.3}
               min={0.05}
-              max={2}
+              max={1}
               onChange={(v) => handleParamChange('decay', v)}
               color={track.color}
               size={44}
             />
             <Knob
               label="Release"
-              value={chordParams?.release ?? 0.3}
+              value={bassParams?.release ?? 0.3}
               min={0.01}
               max={4}
               step={0.01}
@@ -366,13 +358,15 @@ const ChordsTrack = ({
             />
           </div>
         </div>
+
+        {/* Buses Section */}
         <div className="buses-section">
           <div className="buses-header">Buses</div>
           <div className="buses-knobs">
             <div className="bus-knob-item">
               <Knob
                 label="Reverb"
-                value={chordParams?.reverb ?? 0.2}
+                value={bassParams?.reverb ?? 0}
                 min={0}
                 max={0.8}
                 onChange={(v) => handleParamChange('reverb', v)}
@@ -380,12 +374,12 @@ const ChordsTrack = ({
                 color={track.color}
                 size={44}
               />
-              <div className={`led ${((chordParams?.reverb ?? 0) > 0) ? 'on' : ''}`} />
+              <div className={`led ${((bassParams?.reverb ?? 0) > 0) ? 'on' : ''}`} />
             </div>
             <div className="bus-knob-item">
               <Knob
                 label="Delay"
-                value={chordParams?.delay ?? 0}
+                value={bassParams?.delay ?? 0}
                 min={0}
                 max={0.8}
                 onChange={(v) => handleParamChange('delay', v)}
@@ -393,13 +387,15 @@ const ChordsTrack = ({
                 color={track.color}
                 size={44}
               />
-              <div className={`led ${((chordParams?.delay ?? 0) > 0) ? 'on' : ''}`} />
+              <div className={`led ${((bassParams?.delay ?? 0) > 0) ? 'on' : ''}`} />
             </div>
-            </div>
+          </div>
         </div>
       </div>
+
+      {/* end - pattern moved above, controls follow */}
     </div>
   )
 }
 
-export default ChordsTrack
+export default BassTrack

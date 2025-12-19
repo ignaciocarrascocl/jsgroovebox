@@ -1,10 +1,10 @@
 // Keys available
 export const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-// Chord patterns - 16 steps per bar, pattern repeats each bar
+// Poly Synth patterns - 16 steps per bar, pattern repeats each bar
 // Each step can be 0-4: 0=rest, 1=root triad, 2=seventh, 3=inversion, 4=stab
 // The pattern is applied to each bar, chord changes every 16 steps
-export const CHORD_PATTERNS = [
+export const POLY_SYNTH_PATTERNS = [
   // Basic patterns
   { name: 'Whole Notes', pattern: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
   { name: 'Half Notes', pattern: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0] },
@@ -41,8 +41,8 @@ export const CHORD_PATTERNS = [
 // Wave types for synth
 export const WAVE_TYPES = ['sine', 'triangle', 'sawtooth', 'square']
 
-// Chord sound presets - combinations of synth parameters
-export const CHORD_SOUND_PRESETS = [
+// Poly Synth sound presets - combinations of synth parameters
+export const POLY_SYNTH_SOUND_PRESETS = [
   // 1) Warm Piano - mellow, rich
   {
     name: 'Warm Piano',
@@ -397,4 +397,4 @@ export const CHORD_SOUND_PRESETS = [
 ]
 
 // Total steps for full progression (4 bars x 16 steps)
-export const CHORD_TOTAL_STEPS = 64
+export const POLY_SYNTH_TOTAL_STEPS = 64
