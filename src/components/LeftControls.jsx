@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { CHORD_PROGRESSIONS, KEYS } from '../constants/song'
 import './LeftControls.css'
 
-const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, songKey, onKeyChange, compact = false }) => {
+const LeftControls = ({ bpm, onBpmChange, compact = false }) => {
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
   const BPM_MIN = 60
   const BPM_MAX = 180
@@ -48,27 +47,6 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
     const tapped = 60000 / avgMs
     commitBpm(tapped)
   }
-
-  const categorizeProgression = (name = '', mode = 'Major') => {
-    const n = name.toLowerCase()
-    if (n.includes('jazz') || n.includes('neo soul') || n.includes('smooth') || n.includes('soul')) return 'Jazz / Soul'
-    if (n.includes('house') || n.includes('techno') || n.includes('trance') || n.includes('edm') || n.includes('progressive') || n.includes('uplifting') || n.includes('euphoric') || n.includes('industrial') || n.includes('minimal') || n.includes('deep')) {
-      return 'Electrónica'
-    }
-    if (n.includes('rock') || n.includes('punk') || n.includes('metal') || n.includes('grunge') || n.includes('alternative')) return 'Rock'
-    if (n.includes('blues') || n.includes('funk')) return 'Blues / Funk'
-    if (n.includes('pop') || n.includes('50s') || n.includes('folk') || n.includes('ballad')) return 'Pop'
-    return mode === 'Minor' ? 'Menor' : 'Mayor'
-  }
-
-  const groupedProgressions = CHORD_PROGRESSIONS.reduce((acc, p, idx) => {
-    const modeLabel = p.mode === 'Minor' ? 'Menor' : 'Mayor'
-    const cat = categorizeProgression(p.name, p.mode)
-    const groupName = `${modeLabel} · ${cat}`
-    if (!acc[groupName]) acc[groupName] = []
-    acc[groupName].push({ ...p, idx })
-    return acc
-  }, {})
 
   return (
     <div className={`left-controls ${compact ? 'compact' : ''}`}>
@@ -117,46 +95,6 @@ const LeftControls = ({ bpm, onBpmChange, progression, onProgressionChange, song
           >
             Reiniciar
           </button>
-        </div>
-      </div>
-
-      <div className="lc-block">
-        <div className="lc-label">Tonalidad</div>
-        <div className="lc-prog-select-wrap">
-          <select
-            className="lc-prog-select"
-            value={songKey}
-            onChange={(e) => onKeyChange(e.target.value)}
-            aria-label="Selector de tonalidad"
-            size={compact ? 1 : 4}
-          >
-            {KEYS.map((k) => (
-              <option key={k} value={k}>{k}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="lc-block">
-        <div className="lc-label">PROGRESIÓN</div>
-        <div className="lc-prog-select-wrap">
-          <select
-            className="lc-prog-select"
-            value={progression}
-            onChange={(e) => onProgressionChange(Number(e.target.value))}
-            aria-label="Selector de progresión"
-            size={compact ? 1 : 6}
-          >
-            {Object.entries(groupedProgressions).map(([groupName, items]) => (
-              <optgroup key={groupName} label={groupName}>
-                {items.map((p) => (
-                  <option key={p.name} value={p.idx}>
-                    {p.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
         </div>
       </div>
     </div>

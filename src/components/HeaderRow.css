@@ -56,6 +56,16 @@
 /* place center content in the middle column of the bottom grid */
 .header-bottom .header-center { grid-column: 2; justify-self: center; }
 
+.header-debug {
+  margin-left: 12px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+
+.debug-row { display:flex; gap:8px; align-items:center; }
+.debug-label { opacity: 0.7; font-weight:600; margin-left:6px }
+.debug-value { font-family: monospace; background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px; }
+
 .header-right {
   display: flex;
   justify-content: flex-end;

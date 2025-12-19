@@ -7,7 +7,7 @@ import Bar from './Bar'
 import { CHORD_PROGRESSIONS } from '../constants/song'
 import { getChordForDegree } from './secuenciadorHelpers'
 
-const Secuenciador = ({ showToast }) => {
+const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) => {
   const [bars, setBars] = useState([
     { id: 1, name: 'Parte 1', notes: [], repeat: 1, current: 1, key: 'C', mode: 'Major' } // notes: [{ start: 0, duration: 1, root: 'C', type: 'major' }]
   ])
@@ -19,6 +19,7 @@ const Secuenciador = ({ showToast }) => {
   const [dragOverCell, setDragOverCell] = useState({ barIndex: null, stepIndex: null, valid: false })
   const [draggingType, setDraggingType] = useState(null)
   const nextNoteIdRef = useRef(1)
+  const lastEmittedStepsRef = useRef('')
 
   const updateBarName = (barIndex, name) => {
     const newBars = [...bars]
@@ -410,6 +411,55 @@ const Secuenciador = ({ showToast }) => {
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isResizing, resizingData, updateNote])
+
+  // Export chord steps for audio engine (64-step cycle: first 4 bars)
+  useEffect(() => {
+    if (typeof onChordStepsChange !== 'function') return
+    if (!bars || bars.length === 0) {
+      onChordStepsChange(new Array(64).fill(null))
+      return
+    }
+    // Build 4 bars by repeating or truncating bars
+    const barsToUse = []
+    for (let i = 0; i < 4; i++) {
+      barsToUse.push(bars[i % bars.length] || { notes: [], key: selectedKey, mode: selectedMode })
+    }
+    const steps = new Array(64).fill(null)
+    barsToUse.forEach((bar, barIdx) => {
+      const notes = bar.notes || []
+      for (let s = 0; s < 16; s++) {
+        const candidates = notes.filter(n => n.start <= s && s < n.start + (n.duration || 1))
+        if (candidates.length === 0) {
+          steps[barIdx * 16 + s] = null
+          continue
+        }
+        candidates.sort((a, b) => {
+          const d = (b.duration || 1) - (a.duration || 1)
+          if (d !== 0) return d
+          return a.start - b.start
+        })
+        const n = candidates[0]
+        steps[barIdx * 16 + s] = { root: n.root || bar.key || selectedKey, type: n.type || (bar.mode === 'Minor' ? 'minor' : 'major'), duration: n.duration || 1 }
+      }
+    })
+    try {
+      const serialized = JSON.stringify(steps)
+      if (serialized === lastEmittedStepsRef.current) return
+      // Debug: report how many chord steps are non-null and a short sample
+      const nonNull = steps.filter(Boolean).length
+      const sample = steps.map((s, i) => s ? `${i}:${s.root}${s.type ? ' '+s.type : ''}` : null).filter(Boolean).slice(0,6)
+      console.debug('Secuenciador:onChordStepsChange', { nonNull, sample })
+      onChordStepsChange(steps)
+      lastEmittedStepsRef.current = serialized
+    } catch (e) { void e }
+  }, [bars, selectedKey, selectedMode, onChordStepsChange])
+
+  // Notify parent of song-level key changes (optional)
+  useEffect(() => {
+    if (typeof onSongSettingsChange === 'function') {
+      onSongSettingsChange({ key: selectedKey })
+    }
+  }, [selectedKey, onSongSettingsChange])
 
   return (
     <div className="grid-container">

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import HeaderRow from './components/HeaderRow'
 import Toast from './components/Toast'
 import MasterFX from './components/MasterFX'
@@ -9,6 +9,7 @@ import ArpTrack from './components/ArpTrack'
 import Secuenciador from './components/Secuenciador'
 import { useAudioEngine } from './hooks/useAudioEngine'
 import { TRACKS, DEFAULT_PATTERNS } from './constants/tracks'
+import { CHORD_PATTERNS } from './constants/chords'
 import './App.css'
 
 // Default track parameters - tuned per instrument type
@@ -136,6 +137,7 @@ function App() {
   const [chordParams, setChordParams] = useState(DEFAULT_CHORD_PARAMS)
   const [arpParams, setArpParams] = useState(DEFAULT_ARP_PARAMS)
   const [songSettings, setSongSettings] = useState(DEFAULT_SONG_SETTINGS)
+  const [chordSteps, setChordSteps] = useState(null)
   const [mutedTracks, setMutedTracks] = useState({})
   const [soloTracks, setSoloTracks] = useState({})
   const [masterParams, setMasterParams] = useState(DEFAULT_MASTER_PARAMS)
@@ -160,7 +162,7 @@ function App() {
     setMasterParams: setEngineMasterParams,
     setBusParams: setEngineBusParams,
   perfStats,
-  } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, arpParams, songSettings)
+  } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, arpParams, songSettings, chordSteps)
 
   // Drive step-based UI off a low-rate pulse to keep controls responsive while playing.
   // (Read the latest step values via the getters.)
@@ -237,13 +239,7 @@ function App() {
     }))
   }
 
-  const handleProgressionChange = (progression) => {
-    setSongSettings(prev => ({ ...prev, progression }))
-  }
 
-  const handleKeyChange = (key) => {
-    setSongSettings(prev => ({ ...prev, key }))
-  }
 
   const handleResetDefaults = () => {
     // Snapshot current state for undo
@@ -383,6 +379,15 @@ function App() {
     showUndoToast('Reset arp', snapshot)
   }
 
+  // Accept songSettings updates only when they change to avoid update loops
+  const handleSongSettingsChange = useCallback((s) => {
+    setSongSettings(prev => {
+      const merged = { ...prev, ...s }
+      if (merged.key === prev.key && merged.progression === prev.progression) return prev
+      return merged
+    })
+  }, [setSongSettings])
+
   const handleResetMaster = () => {
     const snapshot = { selectedPatterns, customPatterns, trackParams, bassParams, chordParams, arpParams, songSettings, mutedTracks, soloTracks, masterParams, busParams }
     setMasterParams(DEFAULT_MASTER_PARAMS)
@@ -483,10 +488,13 @@ function App() {
               onResetDefaults={handleResetDefaults}
               bpm={bpm}
               onBpmChange={setBpm}
-              progression={songSettings.progression}
-              onProgressionChange={handleProgressionChange}
-              songKey={songSettings.key}
-              onKeyChange={handleKeyChange}
+              chordSteps={chordSteps}
+              getCurrentChordStep={getCurrentChordStep}
+              selectedPatterns={selectedPatterns}
+              customPatterns={customPatterns}
+              songSettings={songSettings}
+              startTone={startTone}
+              toneStarted={toneStarted}
             />
 
             <div className="controls-row">
@@ -611,7 +619,11 @@ function App() {
                 ) : null
               })()}
             </div>
-            <Secuenciador showToast={showUndoToast} />
+            <Secuenciador
+              showToast={showUndoToast}
+              onChordStepsChange={setChordSteps}
+              onSongSettingsChange={handleSongSettingsChange}
+            />
             {toast && (
               <Toast
                 message={toast.message}

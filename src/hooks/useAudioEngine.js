@@ -8,6 +8,7 @@ import { ARP_PATTERNS, ARP_TOTAL_STEPS } from '../constants/arp'
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
+
 const dbFromRms = (rms) => {
   const v = Math.max(1e-8, rms ?? 0)
   return 20 * Math.log10(v)
@@ -155,6 +156,57 @@ const getChordNotes = (key, chordDegree, chordType, mode = 'Major', octave = 3) 
   }
 }
 
+// Helper: get bass note directly from absolute root string and noteType (1 = root, 2 = fifth, 3 = octave)
+const getBassNoteFromRoot = (root, noteType, octave = 1) => {
+  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  const rootIndex = noteNames.indexOf(root)
+  if (rootIndex === -1) return null
+  let semitone = rootIndex
+  let oct = octave
+  switch (noteType) {
+    case 1:
+      break
+    case 2:
+      semitone = (rootIndex + 7) % 12
+      if (rootIndex + 7 >= 12) oct += 1
+      break
+    case 3:
+      oct += 1
+      break
+    default:
+      return null
+  }
+  const noteName = noteNames[semitone]
+  return `${noteName}${oct}`
+}
+
+// Helper: get chord notes from absolute root and a pattern value (1..4) and mode string (major/minor)
+const getChordNotesFromRoot = (root, patternValue, mode = 'Major', octave = 3) => {
+  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  const rootIndex = noteNames.indexOf(root)
+  if (rootIndex === -1) return null
+  const isMinor = (mode && mode.toLowerCase().includes('min'))
+  const thirdInterval = isMinor ? 3 : 4
+  const seventhInterval = 10 // use minor seventh by default
+  const makeNote = (semitones, oct = octave) => {
+    const note = (rootIndex + semitones) % 12
+    const actualOctave = oct + Math.floor((rootIndex + semitones) / 12)
+    return `${noteNames[note]}${actualOctave}`
+  }
+  switch (patternValue) {
+    case 1:
+      return [makeNote(0), makeNote(thirdInterval), makeNote(7)]
+    case 2:
+      return [makeNote(0), makeNote(thirdInterval), makeNote(7), makeNote(seventhInterval)]
+    case 3:
+      return [makeNote(thirdInterval), makeNote(7), makeNote(12)]
+    case 4:
+      return [makeNote(0), makeNote(thirdInterval), makeNote(7)]
+    default:
+      return null
+  }
+} 
+
 // Default track parameters - tuned per instrument type
 const DEFAULT_TRACK_PARAMS = {
   1: { volume: 0, pitch: 0, attack: 0.001, release: 0.4, filter: 800, reverb: 0, delay: 0, compression: 0, swing: 0 },
@@ -165,7 +217,7 @@ const DEFAULT_TRACK_PARAMS = {
   9: { volume: -6, pitch: 0, attack: 0.003, release: 0.15, filter: 4000, reverb: 0.2, delay: 0, compression: 0.5, swing: 0 },
 }
 
-export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = DEFAULT_TRACK_PARAMS, mutedTracks = {}, soloTracks = {}, bassParams = {}, chordParams = {}, arpParams = {}, songSettings = {}) => {
+export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = DEFAULT_TRACK_PARAMS, mutedTracks = {}, soloTracks = {}, bassParams = {}, chordParams = {}, arpParams = {}, songSettings = {}, chordSteps = null) => {
   const [toneStarted, setToneStarted] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   // Steps update at 16n. Keeping them in React state forces a full App re-render
@@ -189,11 +241,38 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const mixerRef = useRef({})
   const leftPowerRef = useRef(1e-8)
   const rightPowerRef = useRef(1e-8)
-  const sequencerRef = useRef(null)
+  const sequencerEventIdRef = useRef(null)
   // Guard to prevent rapid toggles from flooding the main thread
   const isTogglingRef = useRef(false)
   const bassStepRef = useRef(0) // Track 64-step bass progression
   const chordStepRef = useRef(0) // Track 64-step chord progression
+  const chordStepsRef = useRef(chordSteps)
+
+  useEffect(() => {
+    try {
+      if (Array.isArray(chordSteps)) {
+        // Normalize 16-step emissions to 64 steps by repeating across 4 bars
+        let normalized = chordSteps
+        if (chordSteps.length === 16) {
+          normalized = new Array(64).fill(null).map((_, i) => {
+            const v = chordSteps[i % 16]
+            return v ? { root: v.root, type: v.type, duration: v.duration } : null
+          })
+          console.debug('audio:chordStepsRef normalized 16->64')
+        }
+        chordStepsRef.current = normalized
+        const nonNull = normalized.filter(Boolean).length
+        const sample = normalized.map((s, i) => s ? `${i}:${s.root}${s.type ? ' '+s.type : ''}` : null).filter(Boolean).slice(0,6)
+        console.debug('audio:chordStepsRef updated', { nonNull, sample })
+      } else {
+        chordStepsRef.current = chordSteps
+        console.debug('audio:chordStepsRef updated', { value: chordSteps })
+      }
+    } catch (e) {
+      // ignore logging errors
+      chordStepsRef.current = chordSteps
+    }
+  }, [chordSteps])
 
   // publish step refs to UI at a lower cadence (keeps UI responsive)
   useEffect(() => {
@@ -1416,14 +1495,13 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   useEffect(() => {
     if (!toneStarted) return
 
-    if (sequencerRef.current) {
-      sequencerRef.current.dispose()
+    if (sequencerEventIdRef.current != null) {
+      try { Tone.Transport.clear(sequencerEventIdRef.current) } catch (e) { void e }
+      sequencerEventIdRef.current = null
     }
 
-    const steps = Array.from({ length: 16 }, (_, i) => i)
-    
-    sequencerRef.current = new Tone.Sequence(
-      (time, step) => {
+
+    const seqCallback = (time, step) => {
   currentStepRef.current = step
         
         // Read from refs to get current values without triggering re-renders
@@ -1522,11 +1600,44 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         const patternStep = bassStep % 16
         const bassNoteType = bassPattern[patternStep]
         
-        if (bassNoteType > 0 && shouldTrackPlay(6)) {
-          const bassNote = getBassNote(bassKey, chordDegree, bassNoteType, bassMode, 1)
-          if (bassNote) {
-            synthsRef.current.bass?.triggerAttackRelease(bassNote, '8n', time)
-            activeThisStep[6] = true
+        // Determine if Secuenciador is present (explicit controller). When present, it is authoritative:
+        // - if a stepChord exists -> use it
+        // - if stepChord is null -> do NOT fallback to progression (silence)
+        const hasSecuenciadorControl = Array.isArray(chordStepsRef.current)
+        if (hasSecuenciadorControl) {
+          const absoluteStep = bassStep
+          const stepChord = chordStepsRef.current?.[absoluteStep]
+          if (stepChord && stepChord.root) {
+            if (!shouldTrackPlay(6)) {
+              console.debug('audio:bassDecision - blocked by mute/solo', { absoluteStep, from: 'secuenciador', root: stepChord.root, type: stepChord.type, bassNoteType })
+            } else {
+              const bassNote = getBassNoteFromRoot(stepChord.root, bassNoteType || 1, 1)
+              console.debug('audio:bassDecision', { absoluteStep, from: 'secuenciador', root: stepChord.root, type: stepChord.type, bassNote, bassNoteType })
+              if (bassNote) {
+                synthsRef.current.bass?.triggerAttackRelease(bassNote, '8n', time)
+                activeThisStep[6] = true
+              }
+            }
+          } else {
+            console.debug('audio:bassDecision - secuenciador silent', { absoluteStep })
+            // Secuenciador explicitly silent for this step => do nothing
+          }
+        } else {
+          // No secuenciador control present: fallback to progression-based behavior
+          if (bassNoteType > 0 && shouldTrackPlay(6)) {
+            const bassNote = getBassNote(bassKey, chordDegree, bassNoteType, bassMode, 1)
+            console.debug('audio:bassDecision', { absoluteStep: bassStep, from: 'progression', chordDegree, bassNote })
+            if (bassNote) {
+              try {
+                const bassSynth = synthsRef.current.bass
+                console.debug('audio:bassTrigger - pre', { absoluteStep, bassNote, synthPresent: !!bassSynth, synthVolume: bassSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
+                bassSynth?.triggerAttackRelease(bassNote, '8n', time)
+                activeThisStep[6] = true
+                console.debug('audio:bassTrigger - fired', { absoluteStep })
+              } catch (err) {
+                console.error('audio:bassTrigger - error', { absoluteStep, err })
+              }
+            }
           }
         }
 
@@ -1547,13 +1658,62 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         const chordPatternStep = chordStep % 16
         const chordType = chordPattern[chordPatternStep]
         
-        if (chordType > 0 && shouldTrackPlay(7)) {
-          const chordNotes = getChordNotes(bassKey, chordChordDegree, chordType, bassMode, 3)
-          if (chordNotes) {
-            // Determine duration based on chord type
-            const duration = chordType === 4 ? '16n' : '4n' // Stabs are short, others sustain
-            synthsRef.current.chords?.triggerAttackRelease(chordNotes, duration, time)
-            activeThisStep[7] = true
+        const hasSecuenciadorControlChords = Array.isArray(chordStepsRef.current)
+        if (hasSecuenciadorControlChords) {
+          const absoluteStep = chordStep
+          const stepChord = chordStepsRef.current?.[absoluteStep]
+          if (stepChord && stepChord.root) {
+            if (!shouldTrackPlay(7)) {
+              console.debug('audio:chordDecision - blocked by mute/solo', { absoluteStep, from: 'secuenciador', stepChord: `${stepChord.root} ${stepChord.type}` })
+            } else {
+              // Trigger chords only on onset (first step of the chord), not every step of its duration
+              const prevStep = chordStepsRef.current?.[absoluteStep - 1]
+              const isOnset = !prevStep || prevStep.root !== stepChord.root || prevStep.type !== stepChord.type
+              if (isOnset) {
+                const rawPatternVal = chordPattern[absoluteStep % 16]
+                const patternVal = (typeof rawPatternVal === 'number' && rawPatternVal > 0) ? rawPatternVal : 1 // default to triad if pattern is silent or undefined when secuenciador provides a chord
+                const chordNotes = getChordNotesFromRoot(stepChord.root, patternVal, stepChord.type || bassMode, 3)
+                console.debug('audio:chordDecision - onset', { absoluteStep, from: 'secuenciador', stepChord: `${stepChord.root} ${stepChord.type}`, patternVal, durationSteps: stepChord.duration })
+                if (chordNotes) {
+                  // Compute duration from stepChord.duration (in 16th-note steps)
+                  const stepCount = Math.max(1, Math.floor(stepChord.duration || 1))
+                  const durationSeconds = Tone.Time('16n').toSeconds() * stepCount
+                  // If pattern requests a stab, shorten to a single 16th
+                  const finalDuration = (patternVal === 4) ? Tone.Time('16n').toSeconds() : durationSeconds
+                  try {
+                    const chordSynth = synthsRef.current.chords
+                    console.debug('audio:chordTrigger - pre (secuenciador, onset)', { absoluteStep, chordNotes, synthPresent: !!chordSynth, synthVolume: chordSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value, finalDuration })
+                    chordSynth?.triggerAttackRelease(chordNotes, finalDuration, time)
+                    activeThisStep[7] = true
+                    console.debug('audio:chordTrigger - fired (secuenciador, onset)', { absoluteStep })
+                  } catch (err) {
+                    console.error('audio:chordTrigger - error (secuenciador, onset)', { absoluteStep, err })
+                  }
+                }
+              } else {
+                // sustain: mark active for UI but don't retrigger synth
+                activeThisStep[7] = true
+              }
+            }
+          } else {
+            console.debug('audio:chordDecision - secuenciador silent', { absoluteStep })
+            // secuenciador explicitly silent for this step => don't fallback to progression
+          }
+        } else {
+          if (chordType > 0 && shouldTrackPlay(7)) {
+            const chordNotes = getChordNotes(bassKey, chordChordDegree, chordType, bassMode, 3)
+            if (chordNotes) {
+              const duration = chordType === 4 ? '16n' : '4n'
+              try {
+                const chordSynth = synthsRef.current.chords
+                console.debug('audio:chordTrigger - pre (progression)', { absoluteStep: chordStep, chordNotes, synthPresent: !!chordSynth, synthVolume: chordSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
+                chordSynth?.triggerAttackRelease(chordNotes, duration, time)
+                activeThisStep[7] = true
+                console.debug('audio:chordTrigger - fired (progression)', { absoluteStep: chordStep })
+              } catch (err) {
+                console.error('audio:chordTrigger - error (progression)', { absoluteStep: chordStep, err })
+              }
+            }
           }
         }
         
@@ -1573,12 +1733,47 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         const arpPatternStep = arpStep % 16
         const arpNoteType = arpPattern[arpPatternStep]
 
-        if (arpNoteType > 0 && shouldTrackPlay(8)) {
-          const arpNotes = getChordNotes(bassKey, arpChordDegree, 1, bassMode, 4)
-          if (arpNotes) {
-            const note = arpNotes[0]
-            synthsRef.current.arp?.triggerAttackRelease(note, '16n', time)
-            activeThisStep[8] = true
+        const hasSecuenciadorControlArp = Array.isArray(chordStepsRef.current)
+        if (hasSecuenciadorControlArp) {
+          const absoluteStep = arpStep
+          const stepChord = chordStepsRef.current?.[absoluteStep]
+          if (stepChord && stepChord.root && shouldTrackPlay(8)) {
+            const rawArpVal = arpPattern[arpStep % 16]
+            const effectiveArpType = (typeof rawArpVal === 'number' && rawArpVal > 0) ? rawArpVal : 1
+            const arpNotes = getChordNotesFromRoot(stepChord.root, effectiveArpType, stepChord.type || bassMode, 4)
+            console.debug('audio:arpDecision', { absoluteStep, from: 'secuenciador', stepChord: `${stepChord.root} ${stepChord.type}`, arpPatternVal: arpPattern[arpStep % 16] })
+            if (arpNotes) {
+              const note = arpNotes[0]
+              try {
+                const arpSynth = synthsRef.current.arp
+                console.debug('audio:arpTrigger - pre (secuenciador)', { absoluteStep, note, synthPresent: !!arpSynth, synthVolume: arpSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
+                arpSynth?.triggerAttackRelease(note, '16n', time)
+                activeThisStep[8] = true
+                console.debug('audio:arpTrigger - fired (secuenciador)', { absoluteStep })
+              } catch (err) {
+                console.error('audio:arpTrigger - error (secuenciador)', { absoluteStep, err })
+              }
+            }
+          } else {
+            // secuenciador explicitly silent for this step => do nothing
+          }
+        } else {
+          if (arpNoteType > 0 && shouldTrackPlay(8)) {
+            const effectiveArpType = arpNoteType
+            const arpNotes = getChordNotes(bassKey, arpChordDegree, effectiveArpType, bassMode, 4)
+            if (arpNotes) {
+              const note = arpNotes[0]
+              console.debug('audio:arpDecision', { absoluteStep: arpStep, from: 'progression', arpNoteType: effectiveArpType })
+              try {
+                const arpSynth = synthsRef.current.arp
+                console.debug('audio:arpTrigger - pre (progression)', { absoluteStep: arpStep, note, synthPresent: !!arpSynth, synthVolume: arpSynth?.volume?.value, mixerPresent: !!mixerRef.current, masterGain: mixerRef.current?.masterGain?.gain?.value })
+                arpSynth?.triggerAttackRelease(note, '16n', time)
+                activeThisStep[8] = true
+                console.debug('audio:arpTrigger - fired (progression)', { absoluteStep: arpStep })
+              } catch (err) {
+                console.error('audio:arpTrigger - error (progression)', { absoluteStep: arpStep, err })
+              }
+            }
           }
         }
         
@@ -1602,13 +1797,27 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
             transportClearEventIdRef.current = null
           }, time + 0.1)
         }
-      },
-      steps,
-      '16n'
-    )
+      }
+
+    // Schedule transport repeat using seqCallback (16th notes)
+    if (sequencerEventIdRef.current != null) {
+      try { Tone.Transport.clear(sequencerEventIdRef.current) } catch (e) { void e }
+      sequencerEventIdRef.current = null
+    }
+
+    sequencerEventIdRef.current = Tone.Transport.scheduleRepeat((time) => {
+      const s = currentStepRef.current
+      // call the callback with the current 16-step index
+      seqCallback(time, s)
+      // advance for next tick
+      currentStepRef.current = (s + 1) % 16
+    }, '16n')
 
     return () => {
-      sequencerRef.current?.dispose()
+      if (sequencerEventIdRef.current != null) {
+        try { Tone.Transport.clear(sequencerEventIdRef.current) } catch (e) { void e }
+        sequencerEventIdRef.current = null
+      }
     }
   }, [toneStarted])
 
@@ -1664,16 +1873,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
         }
 
         // Clamp Tone.now() to >= 0 and add a tiny offset to avoid floating point negatives
-        try {
-          sequencerRef.current?.stop(Math.max(Tone.now(), 0) + 0.001)
-        } catch {
-          // Fallback: try immediate stop; ignore any RangeError thrown by Tone internals
-          try {
-            sequencerRef.current?.stop()
-          } catch {
-            // ignore immediate stop failure
-          }
-        }
+        // No explicit sequence stop required; stopping the Transport is sufficient.
       }, 0)
     } else {
       const transport = Tone.getTransport()
@@ -1715,7 +1915,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       }
 
       transport.start('+0.1')
-      sequencerRef.current?.start('+0.1')
+
       setIsPlaying(true)
     }
   }, [isPlaying])
