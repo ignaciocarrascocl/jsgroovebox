@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import './Grid.css'
+import './Secuenciador.css'
 
-import { KEYS } from './gridHelpers'
+import { KEYS } from './secuenciadorHelpers'
 import ScaleDisplay from './ScaleDisplay'
 import Bar from './Bar'
 import { CHORD_PROGRESSIONS } from '../constants/song'
-import { getChordForDegree } from './gridHelpers'
+import { getChordForDegree } from './secuenciadorHelpers'
 
-const Grid = () => {
+const Secuenciador = ({ showToast }) => {
   const [bars, setBars] = useState([
     { id: 1, name: 'Parte 1', notes: [], repeat: 1, current: 1, key: 'C', mode: 'Major' } // notes: [{ start: 0, duration: 1, root: 'C', type: 'major' }]
   ])
@@ -96,6 +96,7 @@ const Grid = () => {
     if (bars.length > 1) {
       const newBars = bars.filter((_, index) => index !== barIndex)
       setBars(newBars)
+      showToast?.('Parte eliminada')
     }
   }
 
@@ -103,8 +104,10 @@ const Grid = () => {
   const clearBar = (barIndex) => {
     const newBars = [...bars]
     if (!newBars[barIndex]) return
+    if (!newBars[barIndex].notes || newBars[barIndex].notes.length === 0) return
     newBars[barIndex] = { ...newBars[barIndex], notes: [] }
     setBars(newBars)
+    showToast?.('Acordes limpiados')
   }
 
   const cloneBar = (barIndex) => {
@@ -133,10 +136,8 @@ const Grid = () => {
     const bar = bars[barIndex]
     if (!bar) return
 
-    // Ask user to confirm overwrite if there are existing chords
-    if (bar.notes && bar.notes.length > 0) {
-      if (!window.confirm('Esto sobrescribirá los acordes existentes en esta parte. ¿Desea continuar?')) return
-    }
+    // Overwrite existing chords without confirmation
+    // previously this asked the user to confirm
 
     // Use the song-level selected key and the progression's declared mode
     const keyToUse = selectedKey
@@ -158,6 +159,8 @@ const Grid = () => {
     const newBars = [...bars]
     newBars[barIndex] = { ...newBars[barIndex], notes: newNotes, key: keyToUse, mode: modeToUse }
     setBars(newBars)
+    // Notify user that a progression was applied (replaces any existing chords)
+    showToast?.('Progresión aplicada')
   }
 
   const moveBar = (barIndex, direction) => {
@@ -400,25 +403,27 @@ const Grid = () => {
   return (
     <div className="grid-container">
       <h2>Partes de la canción</h2>
-      <div className="song-settings">
-        <div className="setting-group">
-          <label>Tonalidad:</label>
-          <select value={selectedKey} onChange={(e) => setSelectedKey(e.target.value)}>
-            {KEYS.map(key => (
-              <option key={key} value={key}>{key}</option>
-            ))}
-          </select>
+      <div className="top-row">
+        <div className="song-settings">
+          <div className="setting-group">
+            <label>Tonalidad:</label>
+            <select value={selectedKey} onChange={(e) => setSelectedKey(e.target.value)}>
+              {KEYS.map(key => (
+                <option key={key} value={key}>{key}</option>
+              ))}
+            </select>
+          </div>
+          <div className="setting-group">
+            <label>Modo:</label>
+            <select value={selectedMode} onChange={(e) => setSelectedMode(e.target.value)}>
+              <option value="Major">Mayor</option>
+              <option value="Minor">Menor</option>
+            </select>
+          </div>
         </div>
-        <div className="setting-group">
-          <label>Modo:</label>
-          <select value={selectedMode} onChange={(e) => setSelectedMode(e.target.value)}>
-            <option value="Major">Mayor</option>
-            <option value="Minor">Menor</option>
-          </select>
-        </div>
-      </div>
 
-      <ScaleDisplay selectedKey={selectedKey} selectedMode={selectedMode} onChordDragStart={handleNoteDragStart} onDragEnd={() => setDraggingType(null)} />
+        <ScaleDisplay selectedKey={selectedKey} selectedMode={selectedMode} onChordDragStart={handleNoteDragStart} onDragEnd={() => setDraggingType(null)} />
+      </div>
 
       <div className="grid">
         {bars.map((bar, barIndex) => (
@@ -432,6 +437,7 @@ const Grid = () => {
             updateCurrent={updateCurrent}
             moveBar={moveBar}
             cloneBar={cloneBar}
+            addBar={addBar}
             deleteBar={deleteBar}
             handleDragStart={handleDragStart}
             handleDragOver={handleDragOver}
@@ -454,9 +460,9 @@ const Grid = () => {
           />
         ))}
       </div>
-      <button onClick={addBar} className="add-bar-btn">Agregar parte</button>
+
     </div>
   )
 }
 
-export default Grid
+export default Secuenciador

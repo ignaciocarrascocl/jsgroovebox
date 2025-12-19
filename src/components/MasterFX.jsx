@@ -20,26 +20,22 @@ const MasterFX = ({
   onResetDelay,
   activeResetTarget,
 }) => {
-  const [fxCollapsed, setFxCollapsed] = useState(false)
-
-  const handleMaster = (param, value) => {
-    onMasterParamChange({ ...masterParams, [param]: value })
-  }
-
-  const handleBus = (bus, param, value) => {
-    onBusParamChange({
-      ...busParams,
-      [bus]: {
-        ...busParams?.[bus],
-        [param]: value,
-      },
-    })
-  }
+  const [fxCollapsed, setFxCollapsed] = useState(true)
 
   const linToDb = (v) => {
     if (typeof v !== 'number') return '-∞'
     const val = Math.max(1e-8, Math.abs(v))
     return `${Math.round(20 * Math.log10(val))} dB`
+  }
+
+  // Handlers to update master and bus parameters via the callbacks passed from parent
+  const handleMaster = (key, value) => {
+    // setMasterParams in App accepts either an object or an updater function
+    onMasterParamChange?.(prev => ({ ...(prev ?? {}), [key]: value }))
+  }
+
+  const handleBus = (bus, key, value) => {
+    onBusParamChange?.(prev => ({ ...(prev ?? {}), [bus]: { ...(prev?.[bus] ?? {}), [key]: value } }))
   }
 
   return (
@@ -63,18 +59,24 @@ const MasterFX = ({
       </div>
 
       <div className="masterfx-global">
-        <div className="masterfx-global-header">
+        <div
+          className="masterfx-global-header"
+          role="button"
+          tabIndex={0}
+          aria-expanded={!fxCollapsed}
+          aria-controls="global-fx-grid"
+          onClick={() => setFxCollapsed(s => !s)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFxCollapsed(s => !s) } }}
+        >
           <div className="masterfx-global-title">Global FX</div>
           <div className="masterfx-global-actions">
-            <button
+            <div
               className="masterfx-global-toggle"
-              aria-expanded={!fxCollapsed}
-              aria-controls="global-fx-grid"
+              aria-hidden="true"
               title={fxCollapsed ? 'Show FX' : 'Hide FX'}
-              onClick={() => setFxCollapsed(s => !s)}
             >
               <span className={`chev ${fxCollapsed ? 'collapsed' : 'expanded'}`}>{fxCollapsed ? '▸' : '▾'}</span>
-            </button>
+            </div>
           </div>
         </div>
 

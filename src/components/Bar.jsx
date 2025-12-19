@@ -1,8 +1,8 @@
 import BarHeader from './BarHeader'
 import StepCell from './StepCell'
-import { formatChordLabel } from './gridHelpers'
+import { formatChordLabel } from './secuenciadorHelpers'
 
-const Bar = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, updateCurrent, moveBar, cloneBar, deleteBar, handleDragStart, handleDragOver, handleDrop, handleDragEnd, handleStepDragOver, handleStepDragEnter, handleStepDragLeave, handleStepDrop, handleStepsDrop, dragOverCell, updateNote, removeNote, handleMoveNoteDragStart, setIsResizing, setResizingData, clearBar, progressions, applyProgressionToBar }) => {
+const Bar = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, updateCurrent, moveBar, cloneBar, deleteBar, addBar, handleDragStart, handleDragOver, handleDrop, handleDragEnd, handleStepDragOver, handleStepDragEnter, handleStepDragLeave, handleStepDrop, handleStepsDrop, dragOverCell, updateNote, removeNote, handleMoveNoteDragStart, setIsResizing, setResizingData, clearBar, progressions, applyProgressionToBar }) => {
   return (
     <div className="bar">
       <BarHeader
@@ -14,6 +14,7 @@ const Bar = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, updateCur
         updateCurrent={updateCurrent}
         moveBar={moveBar}
         cloneBar={cloneBar}
+        addBar={addBar}
         deleteBar={deleteBar}
         handleDragStart={handleDragStart}
         handleDragOver={handleDragOver}

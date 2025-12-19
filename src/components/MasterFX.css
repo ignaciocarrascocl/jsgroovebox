@@ -1,7 +1,36 @@
+:root {
+  --fx-bg: rgba(20, 20, 35, 0.95);
+  --fx-border: rgba(255, 255, 255, 0.10);
+  --fx-accent: rgba(102, 126, 234, 0.9);
+  --fx-strip-bg: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.38) 100%);
+  --fx-title: rgba(255, 255, 255, 0.62);
+  --fx-muted: rgba(255, 255, 255, 0.6);
+  --fx-led-on: #60a5fa;
+
+  /* Button state colors */
+  --btn-text: rgba(255,255,255,0.95);
+  --btn-text-active: #ffffff;
+  --btn-disabled-opacity: 0.35; /* more transparent when disabled */
+
+  --btn-positive-bg: linear-gradient(135deg, #7dd3fc, #0ea5e9);
+  --btn-positive-active: linear-gradient(135deg, #0ea5e9, #0077cc);
+
+  --btn-warning-bg: linear-gradient(135deg, #fbbf24, #f59e0b);
+  --btn-warning-active: linear-gradient(135deg, #f59e0b, #d97706);
+
+  --btn-danger-bg: linear-gradient(135deg, #ef4444, #b91c1c);
+  --btn-danger-active: linear-gradient(135deg, #dc2626, #b91c1c);
+
+  --btn-default-bg: transparent; /* neutral by default */
+  --btn-default-active: var(--fx-accent);
+
+  --btn-border-subtle: rgba(255,255,255,0.03);
+}
+
 .masterfx {
   width: 100%;
-  background: rgba(20, 20, 35, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--fx-bg);
+  border: 1px solid var(--fx-border);
   border-radius: 14px;
   padding: 10px 12px;
   backdrop-filter: blur(10px);
@@ -36,32 +65,35 @@
 }
 
 .masterfx-reset {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.9);
+  background: var(--btn-default-bg);
+  border: 1px solid var(--fx-border);
+  color: var(--btn-text);
   padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 700;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
 }
 .masterfx-reset:hover {
-  background: rgba(102,126,234,0.9);
-  color: white;
+  background: var(--btn-default-active);
+  color: var(--btn-text-active);
+  transform: translateY(-1px);
 }
 
 .fx-strip-reset {
   background: transparent;
   border: none;
-  color: rgba(255,255,255,0.8);
+  color: var(--btn-text);
   font-weight: 900;
   margin-left: 8px;
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 6px;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 .fx-strip-reset:hover {
-  background: rgba(102,126,234,0.9);
-  color: white;
+  background: var(--btn-default-active);
+  color: var(--btn-text-active);
 }
 
 /* FX strip reset pulse */
@@ -81,6 +113,30 @@
   letter-spacing: 2px;
   color: rgba(255, 255, 255, 0.55);
   text-transform: uppercase;
+}
+
+.masterfx-global-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+.masterfx-global-header:focus,
+.masterfx-global-header:hover {
+  background: rgba(255,255,255,0.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  outline: none;
+}
+.masterfx-global-actions .masterfx-global-toggle {
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .masterfx-grid {
@@ -103,8 +159,8 @@
 }
 
 .fx-strip {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.38) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: var(--fx-strip-bg);
+  border: 1px solid var(--fx-border);
   border-radius: 12px;
   padding: 8px 8px;
   display: flex;
@@ -133,7 +189,7 @@
   width: 100%;
   text-align: center;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--fx-title);
   letter-spacing: 1.5px;
   text-transform: uppercase;
   padding-bottom: 6px;
@@ -145,7 +201,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
-  color: rgba(255,255,255,0.6);
+  color: var(--fx-muted);
   font-size: 11px;
 }
 .fx-strip-in { font-weight: 600; }
@@ -156,7 +212,7 @@
   background: rgba(255,255,255,0.12);
 }
 .fx-led.on {
-  background: #60a5fa;
+  background: var(--fx-led-on);
   box-shadow: 0 0 8px rgba(96,165,250,0.6);
 }
 
@@ -252,8 +308,8 @@
 }
 
 .segmented-btn {
-  background: rgba(255,255,255,0.03);
-  color: rgba(255,255,255,0.8);
+  background: var(--btn-default-bg);
+  color: var(--btn-text);
   border: 1px solid rgba(255,255,255,0.04);
   padding: 4px 6px;
   border-radius: 8px;
@@ -261,13 +317,14 @@
   cursor: pointer;
   flex: 1 1 auto;
   min-width: 34px;
+  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 }
 
 .segmented-btn.active {
-  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-  color: rgba(255,255,255,0.98);
-  border-color: rgba(255,255,255,0.12);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  background: var(--btn-hover-bg);
+  color: var(--btn-text-active);
+  border-color: var(--btn-hover-border);
+  box-shadow: var(--btn-hover-box-shadow);
 }
 
 .segmented-btn:focus {
@@ -300,6 +357,50 @@
 }
 
 .reverb-type,
+
+/* Shared FX button styles (used by global FX and other UI buttons) */
+.fx-btn {
+  background: var(--btn-default-bg);
+  color: var(--fx-muted);
+  border: 1px solid var(--btn-border-subtle);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-clip: padding-box;
+}
+
+/* Unified hover/active look: match .segmented-btn.active */
+.fx-btn:hover:not(:disabled), .fx-btn.active, .fx-btn[aria-pressed="true"] {
+  background: var(--btn-hover-bg);
+  color: var(--btn-text-active);
+  border-color: var(--btn-hover-border);
+  box-shadow: var(--btn-hover-box-shadow);
+  transform: translateY(-1px);
+}
+
+/* variants remain for explicit active states (class .active) if you want colored variants */
+.fx-btn.positive.active { background: var(--btn-positive-bg); color: var(--btn-text-active); }
+.fx-btn.warning.active { background: var(--btn-warning-bg); color: var(--btn-text-active); }
+.fx-btn.danger.active { background: var(--btn-danger-bg); color: var(--btn-text-active); }
+.fx-btn.primary.active { background: var(--btn-positive-active); color: var(--btn-text-active); }
+
+.fx-btn.small { padding: 4px 6px; border-radius: 6px; font-weight: 800; min-width: 34px; }
+
+.fx-btn:disabled { opacity: var(--btn-disabled-opacity); cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* layout helper: move arrows container to the left side of the header */
+.bar-move {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-right: 8px;
+}
 .delay-type,
 .delay-sync,
 .delay-division,

@@ -1,10 +1,9 @@
-import { getChordForDegree } from './gridHelpers'
+import { getChordForDegree } from './secuenciadorHelpers'
 
 const ScaleDisplay = ({ selectedKey, selectedMode, onChordDragStart, onDragEnd }) => {
   const modeLabel = selectedMode === 'Minor' ? 'Menor' : 'Mayor'
   return (
     <div className="scale-display">
-      <h3>Acordes de la escala ({selectedKey} {modeLabel}):</h3>
       <div className="chord-list">
         {[0,1,2,3,4,5,6].map((degree) => {
           const chord = getChordForDegree(selectedKey, degree, selectedMode)

@@ -1,4 +1,4 @@
-import { CHORD_TYPES, NOTES, formatChordLabel } from './gridHelpers'
+import { CHORD_TYPES, NOTES, formatChordLabel } from './secuenciadorHelpers'
 
 const NoteBlock = ({ note, barIndex, noteIndex, updateNote, removeNote, handleMoveNoteDragStart, setIsResizing, setResizingData }) => {
   return (
