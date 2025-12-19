@@ -43,17 +43,18 @@ const Secuenciador = ({ showToast }) => {
     const bar = bars[barIndex]
     const existing = bar.notes.find(n => n.start <= start && start < n.start + n.duration)
     if (!existing) {
-      const newBars = [...bars]
       const id = nextNoteIdRef.current++
-      newBars[barIndex].notes.push({ id, start, duration: 1, root, type })
+      const newNote = { id, start, duration: 1, root, type }
+      const newBar = { ...bar, notes: [...(bar.notes || []), newNote] }
+      const newBars = [...bars]
+      newBars[barIndex] = newBar
       setBars(newBars)
     }
   }
 
   const updateNote = useCallback((barIndex, noteIndex, updates) => {
-    const newBars = [...bars]
-    const bar = newBars[barIndex]
-    const origNote = bar.notes[noteIndex]
+    const bar = bars[barIndex]
+    const origNote = bar?.notes?.[noteIndex]
     if (!origNote) return
 
     const updatedNote = { ...origNote, ...updates }
@@ -61,26 +62,34 @@ const Secuenciador = ({ showToast }) => {
     updatedNote.start = Math.max(0, Math.min(15, updatedNote.start))
     updatedNote.duration = Math.max(1, Math.min(16 - updatedNote.start, updatedNote.duration || origNote.duration))
 
-    // Apply update
-    bar.notes[noteIndex] = updatedNote
+    // Build a new notes array immutably
+    let newNotes = bar.notes.map((n, idx) => (idx === noteIndex ? updatedNote : n))
 
     // If start/duration changed, remove any other notes overlapping the updated range
     if ('duration' in updates || 'start' in updates) {
       const start = updatedNote.start
       const end = updatedNote.start + updatedNote.duration
-      bar.notes = bar.notes.filter((n, idx) => {
+      newNotes = newNotes.filter((n, idx) => {
         if (idx === noteIndex) return true
         // Keep notes that don't overlap
         return !(n.start < end && start < n.start + n.duration)
       })
     }
 
+    const newBar = { ...bar, notes: newNotes }
+    const newBars = [...bars]
+    newBars[barIndex] = newBar
+
     setBars(newBars)
   }, [bars])
 
   const removeNote = (barIndex, noteIndex) => {
+    const bar = bars[barIndex]
+    if (!bar) return
+    const newNotes = bar.notes.filter((_, idx) => idx !== noteIndex)
+    const newBar = { ...bar, notes: newNotes }
     const newBars = [...bars]
-    newBars[barIndex].notes.splice(noteIndex, 1)
+    newBars[barIndex] = newBar
     setBars(newBars)
   }
 
@@ -332,37 +341,39 @@ const Secuenciador = ({ showToast }) => {
     const dragType = e.dataTransfer.getData('type')
     if (dragType === 'chord') {
       const chordData = JSON.parse(e.dataTransfer.getData('chord'))
-      console.log('Dragged chord data:', chordData)
+      // debug: removed console logging
       const bar = bars[barIndex]
       const existing = bar.notes.find(n => n.start <= stepIndex && stepIndex < n.start + n.duration)
       if (!existing) {
-        const newBars = [...bars]
         // New chords should start with duration 1 by default
         const id = nextNoteIdRef.current++
-        newBars[barIndex].notes.push({ id, start: stepIndex, duration: 1, root: chordData.note, type: chordData.type })
-        newBars[barIndex].key = chordData.note
-        newBars[barIndex].mode = (chordData.type.includes('min') || chordData.type === 'dim') ? 'Minor' : 'Major'
-        console.log('Setting bar mode to:', newBars[barIndex].mode)
+        const newNote = { id, start: stepIndex, duration: 1, root: chordData.note, type: chordData.type }
+        const newBar = { ...bar, notes: [...(bar.notes || []), newNote], key: chordData.note, mode: (chordData.type.includes('min') || chordData.type === 'dim') ? 'Minor' : 'Major' }
+        const newBars = [...bars]
+        newBars[barIndex] = newBar
+        // debug: removed console logging
         setBars(newBars)
       }
     } else if (dragType === 'move-note') {
       const dragBarIndex = parseInt(e.dataTransfer.getData('barIndex'))
       const dragNoteId = parseInt(e.dataTransfer.getData('noteId'))
-      console.log(`Moving note id ${dragNoteId} from bar ${dragBarIndex} to ${barIndex}:${stepIndex}`)
-      const newBars = [...bars]
-      // Find and remove the dragged note from its origin
-      const originBar = newBars[dragBarIndex]
+      // debug: removed console logging
+      const originBar = bars[dragBarIndex]
       const draggedIndex = originBar.notes.findIndex(n => n.id === dragNoteId)
       if (draggedIndex === -1) return
-      const draggedNote = originBar.notes.splice(draggedIndex, 1)[0]
+      const draggedNote = originBar.notes[draggedIndex]
       // Calculate new start and duration, ensuring it doesn't exceed 16 steps
       const newStart = stepIndex
       const newDuration = Math.min(draggedNote.duration, 16 - newStart)
-      // Remove any overlapping notes in the target bar
-      const targetBar = newBars[barIndex]
-      targetBar.notes = targetBar.notes.filter(n => !(n.start < newStart + newDuration && newStart < n.start + n.duration))
-      // Add dragged note to target
-      targetBar.notes.push({ ...draggedNote, start: newStart, duration: newDuration })
+      // Remove dragged note from origin and any overlapping notes in the target bar immutably
+      const newOriginNotes = originBar.notes.filter(n => n.id !== dragNoteId)
+      const targetBar = bars[barIndex]
+      const filteredTargetNotes = (targetBar.notes || []).filter(n => !(n.start < newStart + newDuration && newStart < n.start + n.duration))
+      const newTargetNotes = [...filteredTargetNotes, { ...draggedNote, start: newStart, duration: newDuration }]
+
+      const newBars = [...bars]
+      newBars[dragBarIndex] = { ...originBar, notes: newOriginNotes }
+      newBars[barIndex] = { ...targetBar, notes: newTargetNotes }
       setBars(newBars)
     }
   }

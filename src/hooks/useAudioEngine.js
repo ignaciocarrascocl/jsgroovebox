@@ -190,6 +190,8 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   const leftPowerRef = useRef(1e-8)
   const rightPowerRef = useRef(1e-8)
   const sequencerRef = useRef(null)
+  // Guard to prevent rapid toggles from flooding the main thread
+  const isTogglingRef = useRef(false)
   const bassStepRef = useRef(0) // Track 64-step bass progression
   const chordStepRef = useRef(0) // Track 64-step chord progression
 
@@ -821,7 +823,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     effectsRef.current.bass.filter.Q.value = 2
     // Connect LFO to filter frequency
     effectsRef.current.bass.lfo.connect(effectsRef.current.bass.filter.frequency)
-    effectsRef.current.bass.lfo.start()
+    // effectsRef.current.bass.lfo.start()  // Start only when playing
     // Start chorus internal LFO if available
     if (effectsRef.current.bass.chorus && typeof effectsRef.current.bass.chorus.start === 'function') {
       effectsRef.current.bass.chorus.start()
@@ -849,7 +851,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     effectsRef.current.chords.filter.Q.value = 2
     // Connect LFO to filter frequency
     effectsRef.current.chords.lfo.connect(effectsRef.current.chords.filter.frequency)
-    effectsRef.current.chords.lfo.start()
+    // effectsRef.current.chords.lfo.start()  // Start only when playing
     // Start chorus internal LFO if available
     if (effectsRef.current.chords.chorus && typeof effectsRef.current.chords.chorus.start === 'function') {
       effectsRef.current.chords.chorus.start()
@@ -876,7 +878,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     effectsRef.current.arp.filter.Q.value = 2
     // Connect LFO to filter frequency
     effectsRef.current.arp.lfo.connect(effectsRef.current.arp.filter.frequency)
-    effectsRef.current.arp.lfo.start()
+    // effectsRef.current.arp.lfo.start()  // Start only when playing
     // Start chorus internal LFO if available
     if (effectsRef.current.arp.chorus && typeof effectsRef.current.arp.chorus.start === 'function') {
       effectsRef.current.arp.chorus.start()
@@ -1617,32 +1619,75 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
   }, [])
 
   const togglePlay = useCallback(() => {
+    // Guard against rapid repeated clicks that can block the main thread
+    if (isTogglingRef.current) return
+    isTogglingRef.current = true
+    window.setTimeout(() => { isTogglingRef.current = false }, 300)
+
     if (isPlaying) {
-      Tone.getTransport().stop()
-      Tone.getTransport().cancel()
-      if (transportClearEventIdRef.current != null) {
-        try {
-          Tone.getTransport().clear(transportClearEventIdRef.current)
-        } catch {
-          // ignore
-        }
-        transportClearEventIdRef.current = null
-      }
-      sequencerRef.current?.stop()
+      // Immediately update UI state so user sees feedback quickly
       setIsPlaying(false)
-  currentStepRef.current = 0
-  currentBassStepRef.current = 0
-  currentChordStepRef.current = 0
-  currentArpStepRef.current = 0
-  setUiStepPulse((p) => (p + 1) % 1000000)
+      currentStepRef.current = 0
+      currentBassStepRef.current = 0
+      currentChordStepRef.current = 0
+      currentArpStepRef.current = 0
+      setUiStepPulse((p) => (p + 1) % 1000000)
       bassStepRef.current = 0
       chordStepRef.current = 0
       arpStepRef.current = 0
+
+      // Defer heavier transport/sequence operations to avoid blocking the click handler
+      setTimeout(() => {
+        try {
+          Tone.getTransport().stop('+0.001')
+          Tone.getTransport().cancel()
+        } catch {
+          // ignore errors stopping the transport (best-effort)
+        }
+
+        if (transportClearEventIdRef.current != null) {
+          try {
+            Tone.getTransport().clear(transportClearEventIdRef.current)
+          } catch {
+            // ignore
+          }
+          transportClearEventIdRef.current = null
+        }
+
+        // Stop LFOs to save CPU when not playing
+        try {
+          effectsRef.current.bass?.lfo?.stop()
+          effectsRef.current.chords?.lfo?.stop()
+          effectsRef.current.arp?.lfo?.stop()
+        } catch {
+          // ignore LFO stop errors (best-effort)
+        }
+
+        // Clamp Tone.now() to >= 0 and add a tiny offset to avoid floating point negatives
+        try {
+          sequencerRef.current?.stop(Math.max(Tone.now(), 0) + 0.001)
+        } catch {
+          // Fallback: try immediate stop; ignore any RangeError thrown by Tone internals
+          try {
+            sequencerRef.current?.stop()
+          } catch {
+            // ignore immediate stop failure
+          }
+        }
+      }, 0)
     } else {
       const transport = Tone.getTransport()
 
       // If transport is paused, resume in place.
       if (transport.state === 'paused') {
+        // Start LFOs when resuming
+        try {
+          effectsRef.current.bass?.lfo?.start()
+          effectsRef.current.chords?.lfo?.start()
+          effectsRef.current.arp?.lfo?.start()
+        } catch {
+          // ignore LFO start errors (best-effort)
+        }
         transport.start('+0.05')
         // Do NOT restart sequencer to avoid resetting position.
         setIsPlaying(true)
@@ -1654,11 +1699,20 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
       bassStepRef.current = 0
       chordStepRef.current = 0
       arpStepRef.current = 0
-  currentStepRef.current = 0
-  currentBassStepRef.current = 0
-  currentChordStepRef.current = 0
-  currentArpStepRef.current = 0
-  setUiStepPulse((p) => (p + 1) % 1000000)
+      currentStepRef.current = 0
+      currentBassStepRef.current = 0
+      currentChordStepRef.current = 0
+      currentArpStepRef.current = 0
+      setUiStepPulse((p) => (p + 1) % 1000000)
+
+      // Start LFOs for modulation when playing
+      try {
+        effectsRef.current.bass?.lfo?.start()
+        effectsRef.current.chords?.lfo?.start()
+        effectsRef.current.arp?.lfo?.start()
+      } catch {
+        // ignore LFO start errors (best-effort)
+      }
 
       transport.start('+0.1')
       sequencerRef.current?.start('+0.1')
@@ -1673,6 +1727,14 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
     Tone.getTransport().pause()
     // Keep the sequencer scheduled; it's driven by Transport time.
     setIsPlaying(false)
+    // Stop LFOs when paused
+    try {
+      effectsRef.current.bass?.lfo?.stop()
+      effectsRef.current.chords?.lfo?.stop()
+      effectsRef.current.arp?.lfo?.stop()
+    } catch {
+      // ignore LFO stop errors (best-effort)
+    }
   }, [isPlaying, toneStarted])
 
   const playTrack = useCallback((trackId) => {
