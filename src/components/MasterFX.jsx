@@ -2,7 +2,6 @@ import { useState } from 'react'
 import Knob from './Knob'
 import MasterSoundVisualizer from './MasterSoundVisualizer'
 import './MasterFX.css'
-import StereoMeter from './StereoMeter'
 
 const MasterFX = ({
   masterParams,
@@ -14,7 +13,6 @@ const MasterFX = ({
   onResetMaster,
   onResetComp,
   onResetEQ,
-  onResetVolume,
   onResetFilter,
   onResetReverb,
   onResetDelay,
@@ -31,11 +29,11 @@ const MasterFX = ({
   // Handlers to update master and bus parameters via the callbacks passed from parent
   const handleMaster = (key, value) => {
     // setMasterParams in App accepts either an object or an updater function
-    onMasterParamChange?.(prev => ({ ...(prev ?? {}), [key]: value }))
+    onMasterParamChange?.(prev => ({ ...prev, [key]: value }))
   }
 
   const handleBus = (bus, key, value) => {
-    onBusParamChange?.(prev => ({ ...(prev ?? {}), [bus]: { ...(prev?.[bus] ?? {}), [key]: value } }))
+    onBusParamChange?.(prev => ({ ...prev, [bus]: { ...(prev?.[bus]), [key]: value } }))
   }
 
   return (
@@ -585,28 +583,6 @@ const MasterFX = ({
               color="#ff6b6b"
             />
           </div>
-        </div>
-  <div className={`fx-strip ${activeResetTarget === 'volume' ? 'just-reset' : ''}`}>
-          <div className="fx-strip-title">VOLUME <button className="fx-strip-reset" title="Reset output level" onClick={() => onResetVolume?.()}>⟲</button></div>
-          <div className="viz viz--tall">
-            <StereoMeter
-              leftDb={meter?.leftPeakDb}
-              rightDb={meter?.rightPeakDb}
-              leftRmsDb={meter?.leftRmsDb}
-              rightRmsDb={meter?.rightRmsDb}
-            />
-          </div>
-          {/* Primary output level (dB) */}
-          <Knob
-            label="Level"
-            unit="dB"
-            tooltip="Primary output level"
-            value={masterParams?.volume ?? 0}
-            min={-60}
-            max={6}
-            onChange={(v) => handleMaster('volume', v)}
-            color="#a78bfa"
-          />
         </div>
           </div>
         </div>

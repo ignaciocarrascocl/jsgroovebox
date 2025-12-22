@@ -473,7 +473,6 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
 
   return (
     <div className="grid-container">
-      <h2>Partes de la canción</h2>
       <div className="top-row">
         <div className="song-settings">
           <div className="setting-group">

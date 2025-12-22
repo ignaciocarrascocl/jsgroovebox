@@ -204,7 +204,7 @@ Controles UI (componente `MasterFX.jsx`):
 - `COMP.Mix` (`compMix`, 0..1): crossfade entre dry/wet.
 - `EQ.Low/Mid/High` (`eqLow/eqMid/eqHigh`, dB): `Tone.EQ3`.
 - `FILTER.Cutoff` (`filterCutoff`, Hz) y `FILTER.Reso` (`filterReso`, Q): `Tone.Filter`.
-- `VOLUME.Master` (`volume`, dB) + `VOLUME.Out` (`outGain`, dB): se suman y se convierten a ganancia en `masterGain`.
+- `VOLUME.Out` (`outGain`, dB): control interno sobre el nivel de salida aplicado a `masterGain`. El control maestro de volumen fue removido de la UI.
 - `VOLUME.Pan` y `FILTER.Drive` aparecen en el UI, pero sólo aplican si existe el nodo correspondiente (ver nota en `useAudioEngine.js`).
 
 ## Visualización

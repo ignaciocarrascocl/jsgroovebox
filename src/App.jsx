@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import HeaderRow from './components/HeaderRow'
 import Toast from './components/Toast'
 import MasterFX from './components/MasterFX'
+import Mixer from './components/Mixer'
 import Track from './components/Track'
 import BassTrack from './components/MonoSynthTrack'
 import ChordsTrack from './components/PolySynthTrack'
@@ -99,7 +100,6 @@ const DEFAULT_MASTER_PARAMS = {
   eqHigh: 0,
   filterCutoff: 20000,
   filterReso: 0.7,
-  volume: 0,
 }
 
 const DEFAULT_BUS_PARAMS = {
@@ -411,12 +411,6 @@ function App() {
     showUndoToast('Reset EQ', snapshot)
   }
 
-  const handleResetVolume = () => {
-    const snapshot = { masterParams }
-    setMasterParams(prev => ({ ...prev, volume: DEFAULT_MASTER_PARAMS.volume ?? 0 }))
-    showUndoToast('Reset output level', snapshot)
-  }
-
   const handleResetFilter = () => {
     const snapshot = { masterParams }
     setMasterParams(prev => ({ ...prev, filterCutoff: 20000, filterReso: 0.7, filterBandwidth: undefined, filterSlope: 24, filterType: 0 }))
@@ -508,7 +502,6 @@ function App() {
                   onResetMaster={handleResetMaster}
                   onResetComp={handleResetComp}
                   onResetEQ={handleResetEQ}
-                  onResetVolume={handleResetVolume}
                   onResetFilter={handleResetFilter}
                   onResetReverb={handleResetReverb}
                   onResetDelay={handleResetDelay}
@@ -516,6 +509,8 @@ function App() {
                 />
               </div>
             </div>
+
+            <Mixer />
 
             <Secuenciador
               showToast={showUndoToast}
