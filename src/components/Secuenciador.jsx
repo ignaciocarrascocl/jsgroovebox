@@ -7,7 +7,7 @@ import Bar from './Bar'
 import { CHORD_PROGRESSIONS } from '../constants/song'
 import { getChordForDegree } from './secuenciadorHelpers'
 
-const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) => {
+const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange, currentStep = 0, isPlaying = false }) => {
   const [bars, setBars] = useState([
     { id: 1, name: 'Parte 1', notes: [], repeat: 1, current: 1, key: 'C', mode: 'Major' } // notes: [{ start: 0, duration: 1, root: 'C', type: 'major' }]
   ])
@@ -472,7 +472,7 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
   }, [selectedKey, onSongSettingsChange])
 
   return (
-    <div className="grid-container">
+    <div className="grid-container groovebox-section">
       <div className="top-row">
         <div className="song-settings">
           <div className="setting-group">
@@ -527,6 +527,9 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange }) =
             handleMoveNoteDragStart={handleMoveNoteDragStart}
             setIsResizing={setIsResizing}
             setResizingData={setResizingData}
+            // Playback state for LEDs
+            currentStep={currentStep}
+            isPlaying={isPlaying}
           />
         ))}
       </div>

@@ -162,15 +162,8 @@ const Track = ({
       {/* Controls Section - All Knobs */}
       <div className="track-controls">
         <div className="knobs-section">
-          {/* Volume */}
-          <Knob 
-            label="Volume" 
-            value={trackParams?.volume ?? 0} 
-            min={-60} 
-            max={6} 
-            onChange={(v) => handleParamChange('volume', v)}
-            color={track.color}
-          />
+          {/* Volume moved to Mixer */}
+          <div style={{ width: '100%' }} />
           {/* Pitch */}
           <Knob 
             label="Pitch" 

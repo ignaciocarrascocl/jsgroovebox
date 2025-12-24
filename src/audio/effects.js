@@ -8,36 +8,42 @@ const createTrackEffects = () => {
       filter: new Tone.Filter(1000, 'lowpass'),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     snare: {
       compressor: new Tone.Compressor(-30, 3),
       filter: new Tone.Filter(5000, 'lowpass'),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     hihat: {
       compressor: new Tone.Compressor(-30, 3),
       filter: new Tone.Filter(8000, 'highpass'),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     openHH: {
       compressor: new Tone.Compressor(-30, 3),
       filter: new Tone.Filter(8000, 'highpass'),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     tom: {
       compressor: new Tone.Compressor(-30, 3),
       filter: new Tone.Filter(1200, 'lowpass'),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     clap: {
       compressor: new Tone.Compressor(-30, 3),
       filter: new Tone.Filter(4000, 'bandpass'),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     bass: {
       compressor: new Tone.Compressor(-30, 3),
@@ -47,6 +53,7 @@ const createTrackEffects = () => {
       lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     chords: {
       compressor: new Tone.Compressor(-30, 3),
@@ -56,6 +63,7 @@ const createTrackEffects = () => {
       lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
     arp: {
       compressor: new Tone.Compressor(-30, 3),
@@ -65,6 +73,7 @@ const createTrackEffects = () => {
       lfo: new Tone.LFO({ frequency: 0, min: 0, max: 0 }),
       delaySend: new Tone.Gain(0),
       reverbSend: new Tone.Gain(0),
+      meter: new Tone.Meter({ channels: 1, normalRange: false }),
     },
   }
 

@@ -229,14 +229,8 @@ const ArpTrack = ({
               onChange={(v) => handleParamChange('detune', v)}
               color={track.color}
             />
-            <Knob 
-              label="Volume" 
-              value={arpParams?.volume ?? -6} 
-              min={-60} 
-              max={6} 
-              onChange={(v) => handleParamChange('volume', v)}
-              color={track.color}
-            />
+            {/* Volume moved to Mixer */}
+            <div style={{ width: '100%' }} />
           </div>
         </div>
 

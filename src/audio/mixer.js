@@ -125,6 +125,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.kick?.filter) {
     effects.kick.filter.connect(effects.kick.delaySend)
     effects.kick.filter.connect(effects.kick.reverbSend)
+    if (effects.kick?.meter) effects.kick.filter.connect(effects.kick.meter)
   }
 
   synths.snare.chain(
@@ -135,6 +136,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.snare?.filter) {
     effects.snare.filter.connect(effects.snare.delaySend)
     effects.snare.filter.connect(effects.snare.reverbSend)
+    if (effects.snare?.meter) effects.snare.filter.connect(effects.snare.meter)
   }
 
   synths.hihat.chain(
@@ -145,6 +147,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.hihat?.filter) {
     effects.hihat.filter.connect(effects.hihat.delaySend)
     effects.hihat.filter.connect(effects.hihat.reverbSend)
+    if (effects.hihat?.meter) effects.hihat.filter.connect(effects.hihat.meter)
   }
 
   synths.openHH.chain(
@@ -155,6 +158,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.openHH?.filter) {
     effects.openHH.filter.connect(effects.openHH.delaySend)
     effects.openHH.filter.connect(effects.openHH.reverbSend)
+    if (effects.openHH?.meter) effects.openHH.filter.connect(effects.openHH.meter)
   }
 
   synths.tom.chain(
@@ -165,6 +169,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.tom?.filter) {
     effects.tom.filter.connect(effects.tom.delaySend)
     effects.tom.filter.connect(effects.tom.reverbSend)
+    if (effects.tom?.meter) effects.tom.filter.connect(effects.tom.meter)
   }
 
   synths.clap.chain(
@@ -175,6 +180,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.clap?.filter) {
     effects.clap.filter.connect(effects.clap.delaySend)
     effects.clap.filter.connect(effects.clap.reverbSend)
+    if (effects.clap?.meter) effects.clap.filter.connect(effects.clap.meter)
   }
 
   // Wire melodic synths
@@ -188,6 +194,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.bass?.filter) {
     effects.bass.filter.connect(effects.bass.delaySend)
     effects.bass.filter.connect(effects.bass.reverbSend)
+    if (effects.bass?.meter) effects.bass.filter.connect(effects.bass.meter)
   }
 
   synths.chords.chain(
@@ -200,6 +207,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.chords?.filter) {
     effects.chords.filter.connect(effects.chords.delaySend)
     effects.chords.filter.connect(effects.chords.reverbSend)
+    if (effects.chords?.meter) effects.chords.filter.connect(effects.chords.meter)
   }
 
   synths.arp.chain(
@@ -212,6 +220,7 @@ const wireAudioGraph = (synths, effects, mixer) => {
   if (effects.arp?.filter) {
     effects.arp.filter.connect(effects.arp.delaySend)
     effects.arp.filter.connect(effects.arp.reverbSend)
+    if (effects.arp?.meter) effects.arp.filter.connect(effects.arp.meter)
   }
 
   // Wire track sends to shared buses

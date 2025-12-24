@@ -1,40 +1,47 @@
 import React from 'react';
 import Fader from './Fader';
 import './Mixer.css';
+import { TRACKS } from '../constants/tracks'
 
-const Mixer = () => {
-  const tracks = [
-    'Kick', 'Snare', 'HiHat', 'OHat', 'Tom', 'Clap', 'Bass', 'Chords', 'Arp'
-  ];
+const Mixer = ({
+  trackVolumes = {},
+  mutedTracks = {},
+  soloTracks = {},
+  onTrackVolumeChange = () => {},
+  onMuteToggle = () => {},
+  onSoloToggle = () => {},
+  masterVolume = 0,
+  onMasterVolumeChange = () => {},
+  busParams = {},
+  onBusParamChange = () => {},
+  masterMeter = {},
+  activeTracks = {},
+}) => {
+  const buses = [ { key: 'reverb', label: 'Reverb' }, { key: 'delay', label: 'Delay' } ];
 
-  const buses = ['Bus 1', 'Bus 2'];
-  const master = 'Master';
+  const meterToDb = (v) => {
+    if (typeof v !== 'number') return -120
+    if (Math.abs(v) <= 2) return Math.round(20 * Math.log10(Math.max(1e-8, Math.abs(v))))
+    return Math.max(-120, Math.min(12, Math.round(v)))
+  }
 
-  // Mock volume values for now (will be connected to actual audio later)
-  const mockVolumes = {
-    Kick: -6, Snare: -3, HiHat: -8, OHat: -10, Tom: -5, Clap: -6, Bass: -6, Chords: -10, Arp: -6,
-    'Bus 1': -6, 'Bus 2': -6, Master: 0
-  };
+  const dbToNormalized = (db) => {
+    // map [-60..0+] -> [0..1]
+    const n = (db + 60) / 60
+    return Math.max(0, Math.min(1, n))
+  }
 
-  // Mock meter levels for now
-  const mockLevels = {
-    Kick: -12, Snare: -8, HiHat: -15, OHat: -18, Tom: -10, Clap: -14, Bass: -6, Chords: -12, Arp: -9,
-    'Bus 1': -10, 'Bus 2': -12, Master: -3
-  };
-
-  const handleVolumeChange = (trackName, value) => {
-    // TODO: Connect to actual audio engine
-    console.log(`${trackName} volume changed to: ${value}`);
-  };
-
-  const compactColorForLevel = (level) => {
-    if (level >= 0) return '#ff4444';
-    if (level >= -6) return '#ffaa44';
-    return '#44ff44';
+  const ledStyleFromDb = (db) => {
+    const n = dbToNormalized(db)
+    const hue = 120 - n * 120 // green -> red
+    const light = `${45 + n * 25}%`
+    const color = `hsl(${hue}, 85%, ${light})`
+    const glow = `0 0 ${4 + n * 18}px ${color.replace(')', ', 0.55)')}`
+    return { background: color, boxShadow: glow }
   }
 
   return (
-    <div className="mixer-container">
+    <div className="mixer-container groovebox-section">
       <div className="mixer-header">
         <div className="mixer-title">Mixer</div>
         <div className="mixer-legend" aria-hidden>
@@ -43,33 +50,41 @@ const Mixer = () => {
         </div>
       </div>
 
-      {tracks.map((track, index) => (
-        <div key={index} className="mixer-channel compact-channel">
+      {TRACKS.map((track) => (
+        <div key={track.id} className="mixer-channel compact-channel">
           <div className="channel-strip">
             <div className="channel-top">
-              <div className="channel-label" title={track}>{track}</div>
+              <div className="channel-label" title={track.name}>{track.name}</div>
             </div>
 
             <div className="channel-body compact-body">
-              <div className="compact-indicator" title={`${mockLevels[track]} dB`} aria-label={`${mockLevels[track]} dB`}> 
-                <div className="mini-led" style={{ background: compactColorForLevel(mockLevels[track]) }} />
-              </div>
+              {(() => {
+                const db = masterMeter?.trackLevels?.[track.id]
+                const hasDb = (typeof db === 'number' && db > -119)
+                const style = hasDb ? ledStyleFromDb(db) : (activeTracks[track.id] ? { background: '#f1c40f', boxShadow: '0 0 12px rgba(241,196,15,0.9)' } : { background: 'rgba(255,255,255,0.06)' })
+                const title = hasDb ? `${Math.round(db)} dB` : (activeTracks[track.id] ? 'Activity' : '')
+                return (
+                  <div className="compact-indicator" title={title} aria-label={title}>
+                    <div className="mini-led" style={style} />
+                  </div>
+                )
+              })()}
 
               <Fader
                 label=""
-                value={mockVolumes[track]}
+                value={typeof trackVolumes[track.id] === 'number' ? trackVolumes[track.id] : 0}
                 min={-60}
                 max={12}
-                onChange={(value) => handleVolumeChange(track, value)}
-                color="#44ff44"
+                onChange={(value) => onTrackVolumeChange(track.id, Math.round(value))}
+                color={track.color}
               />
             </div>
 
             <div className="channel-footer">
-              <div className="channel-db">{mockVolumes[track] <= -60 ? '-∞' : `${Math.round(mockVolumes[track])} dB`}</div>
+              <div className="channel-db">{(typeof trackVolumes[track.id] === 'number' && trackVolumes[track.id] <= -60) ? '-∞' : `${Math.round(trackVolumes[track.id] ?? 0)} dB`}</div>
               <div className="channel-buttons">
-                <button className="mute-btn" aria-label={`Mute ${track}`}>M</button>
-                <button className="solo-btn" aria-label={`Solo ${track}`}>S</button>
+                <button className={`mute-btn ${mutedTracks[track.id] ? 'active' : ''}`} aria-label={`Mute ${track.name}`} onClick={() => onMuteToggle(track.id)}>M</button>
+                <button className={`solo-btn ${soloTracks[track.id] ? 'active' : ''}`} aria-label={`Solo ${track.name}`} onClick={() => onSoloToggle(track.id)}>S</button>
               </div>
             </div>
           </div>
@@ -80,67 +95,68 @@ const Mixer = () => {
         <div key={`bus-${index}`} className="mixer-channel bus-channel compact-channel">
           <div className="channel-strip">
             <div className="channel-top">
-              <div className="channel-label" title={bus}>{bus}</div>
+              <div className="channel-label" title={bus.label}>{bus.label}</div>
             </div>
 
             <div className="channel-body compact-body">
-              <div className="compact-indicator" title={`${mockLevels[bus]} dB`} aria-label={`${mockLevels[bus]} dB`}>
-                <div className="mini-led" style={{ background: compactColorForLevel(mockLevels[bus]) }} />
+              {/* bus meter (real value from audio engine) */}
+              <div className="compact-indicator" title={`${Math.round(meterToDb(bus.key === 'reverb' ? masterMeter?.reverbVal : masterMeter?.delayVal))} dB`} aria-label={`${Math.round(meterToDb(bus.key === 'reverb' ? masterMeter?.reverbVal : masterMeter?.delayVal))} dB`}>
+                <div className="mini-led" style={ledStyleFromDb(meterToDb(bus.key === 'reverb' ? masterMeter?.reverbVal : masterMeter?.delayVal))} />
               </div>
 
               <Fader
                 label=""
-                value={mockVolumes[bus]}
-                min={-60}
-                max={12}
-                onChange={(value) => handleVolumeChange(bus, value)}
+                value={(busParams?.[bus.key]?.wet ?? 0)}
+                min={0}
+                max={1}
+                onChange={(value) => onBusParamChange?.(prev => ({ ...prev, [bus.key]: { ...(prev?.[bus.key]), wet: Math.max(0, Math.min(1, value)) } }))}
                 color="#ffaa44"
               />
             </div>
 
             <div className="channel-footer">
-              <div className="channel-db">{mockVolumes[bus] <= -60 ? '-∞' : `${Math.round(mockVolumes[bus])} dB`}</div>
-              <div className="channel-buttons">
-                <button className="mute-btn" aria-label={`Mute ${bus}`}>M</button>
-                <button className="solo-btn" aria-label={`Solo ${bus}`}>S</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
+              <div className="channel-db">{Math.round((busParams?.[bus.key]?.wet ?? 0) * 100)}%</div>
+               <div className="channel-buttons">
+                <button className="mute-btn" aria-label={`Mute ${bus.label}`}>M</button>
+                <button className="solo-btn" aria-label={`Solo ${bus.label}`}>S</button>
+               </div>
+             </div>
+           </div>
+         </div>
+       ))}
 
       <div className="mixer-channel master-channel compact-channel">
         <div className="channel-strip">
           <div className="channel-top">
-            <div className="channel-label" title={master}>{master}</div>
+            <div className="channel-label" title={'Master'}>{'Master'}</div>
           </div>
 
           <div className="channel-body compact-body">
-            <div className="compact-indicator" title={`${mockLevels[master]} dB`} aria-label={`${mockLevels[master]} dB`}>
-              <div className="mini-led" style={{ background: compactColorForLevel(mockLevels[master]) }} />
+            <div className="compact-indicator" title={`${Math.round(masterMeter?.peakDb ?? -120)} dB`} aria-label={`${Math.round(masterMeter?.peakDb ?? -120)} dB`}>
+              <div className="mini-led" style={ledStyleFromDb(masterMeter?.peakDb ?? -120)} />
             </div>
 
             <Fader
               label=""
-              value={mockVolumes[master]}
+              value={masterVolume}
               min={-60}
               max={12}
-              onChange={(value) => handleVolumeChange(master, value)}
+              onChange={(value) => onMasterVolumeChange(Math.round(value))}
               color="#ff4444"
             />
           </div>
 
           <div className="channel-footer">
-            <div className="channel-db">{mockVolumes[master] <= -60 ? '-∞' : `${Math.round(mockVolumes[master])} dB`}</div>
+            <div className="channel-db">{masterVolume <= -60 ? '-∞' : `${Math.round(masterVolume)} dB`}</div>
             <div className="channel-buttons">
-              <button className="mute-btn" aria-label={`Mute ${master}`}>M</button>
-              <button className="solo-btn" aria-label={`Solo ${master}`}>S</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+               <button className="mute-btn" aria-label={`Mute Master`}>M</button>
+               <button className="solo-btn" aria-label={`Solo Master`}>S</button>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+   );
+ };
 
-export default Mixer;
+ export default Mixer;

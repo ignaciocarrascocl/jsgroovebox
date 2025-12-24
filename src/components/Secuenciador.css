@@ -5,7 +5,7 @@ width: 100%;
     background: rgba(20, 20, 35, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 12px;
-    padding: 20px;
+    /* padding moved to .groovebox-section */
     backdrop-filter: blur(10px);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
     color: white;
@@ -264,6 +264,10 @@ width: 100%;
 }
 
 .step.empty {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #3a3a3a;
   border: 2px dashed #555;
   transition: all 0.2s ease;
@@ -279,6 +283,23 @@ width: 100%;
   border-color: var(--btn-hover-border);
   transform: scale(1.05);
   box-shadow: var(--btn-hover-box-shadow);
+}
+
+.empty-step-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.empty-plus {
+  font-size: 1.1em;
+  color: #ddd;
+  z-index: 1;
+  pointer-events: none; /* ensure this doesn't block drag/drop */
 }
 
 .step.occupied {
@@ -470,71 +491,104 @@ width: 100%;
   font-size: 0.8em;
 }
 
-.bar-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+/* LED row under the steps: 4 small leds per step indicating the currently playing subdivision */
+.step-leds {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 6px;
+  pointer-events: none; /* don't block drags/clicks on the steps above */
 }
 
-.btn-move.fx-btn, .btn-move.fx-btn.small { background: var(--btn-default-bg); color: var(--fx-muted); border: 1px solid var(--btn-border-subtle); border-radius: 6px; padding: 6px 8px; font-weight: 700; cursor: pointer; transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease; }
+/* 64-led strip placed under the steps; each step's column contains 4 leds stacked horizontally */
+.bar > .step-leds.step-leds-64 {
+  display: grid;
+  grid-template-columns: repeat(64, minmax(0, 1fr)); /* ensure 64 columns in a single row */
+  grid-auto-flow: column;
+  gap: calc(5px / 3); /* 3 LED gaps ≈ 1 step gap to align with .steps gap (5px) */
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 6px;
+  pointer-events: none;
+}
 
+.bar > .step-leds.step-leds-64 > .step-sub-led {
+  width: 100%;
+  height: 6px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.12); /* neutral gray */
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.4);
+  transition: background 0.08s ease, box-shadow 0.08s ease;
+  display: block;
+}
+
+.bar > .step-leds.step-leds-64 > .step-sub-led.current {
+  background: #34d399; /* green to indicate playhead */
+  box-shadow: 0 0 6px rgba(52,211,153,0.6);
+}
+
+/* Beat markers removed for LED strip (not used) */
+
+.btn-move.fx-btn { background: var(--btn-default-bg); color: var(--fx-muted); border: 1px solid var(--btn-border-subtle); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease; }
 .btn-move.fx-btn:hover:not(:disabled) { background: var(--btn-hover-bg); color: var(--btn-text-active); border-color: var(--btn-hover-border); transform: translateY(-1px); box-shadow: var(--btn-hover-box-shadow); }
-
-.drag-handle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: linear-gradient(180deg,#0b1220,#0e1622);
-  color: #9ca3af;
-  border: 1px solid #1f2937;
-  cursor: grab;
-  margin-right: 8px;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-.drag-icon {
-  font-size: 16px;
-  line-height: 1;
-  transform: translateY(-1px);
-}
-
-.repeat-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9em;
-}
-
-.repeat-input label {
-  color: #cbd5e1;
-  font-weight: 700;
-  font-size: 0.85em;
-  background: linear-gradient(180deg,#0b1220,#0e1622);
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid #232a33;
-}
-
-.repeat-input input {
-  width: 64px;
-  background: linear-gradient(180deg,#111827,#0f1720);
-  color: #fff;
-  border: 1px solid #1f2937;
-  border-radius: 8px;
-  padding: 6px 8px;
-  text-align: center;
-  font-weight: 700;
-  box-shadow: inset 0 -2px 0 rgba(255,255,255,0.02);
-}
-
-.repeat-input input:focus {
-  outline: none;
-  box-shadow: 0 6px 18px rgba(96,165,250,0.06);
-  border-color: #60a5fa;
-}
+ 
+ .drag-handle {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 28px;
+   height: 28px;
+   border-radius: 6px;
+   background: linear-gradient(180deg,#0b1220,#0e1622);
+   color: #9ca3af;
+   border: 1px solid #1f2937;
+   cursor: grab;
+   margin-right: 8px;
+ }
+ 
+ .drag-handle:active {
+   cursor: grabbing;
+ }
+ 
+ .drag-icon {
+   font-size: 16px;
+   line-height: 1;
+   transform: translateY(-1px);
+ }
+ 
+ /* Repeat input (Repetir) in Bar header */
+ .repeat-input {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   font-size: 0.9em;
+ }
+ 
+ .repeat-input label {
+   color: #cbd5e1;
+   font-weight: 700;
+   font-size: 0.85em;
+   background: linear-gradient(180deg,#0b1220,#0e1622);
+   padding: 6px 8px;
+   border-radius: 8px;
+   border: 1px solid #232a33;
+ }
+ 
+ .repeat-input input {
+   width: 64px;
+   background: linear-gradient(180deg,#111827,#0f1720);
+   color: #fff;
+   border: 1px solid #1f2937;
+   border-radius: 8px;
+   padding: 6px 8px;
+   text-align: center;
+   font-weight: 700;
+   box-shadow: inset 0 -2px 0 rgba(255,255,255,0.02);
+ }
+ 
+ .repeat-input input:focus {
+   outline: none;
+   box-shadow: 0 6px 18px rgba(96,165,250,0.06);
+   border-color: #60a5fa;
+ }

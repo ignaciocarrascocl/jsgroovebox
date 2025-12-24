@@ -1,7 +1,7 @@
 import { dbFromRms } from '../utils/audioUtils.js'
 
 // Metering and waveform analysis
-const createMetering = (mixerRef, isPlaying, setMasterMeter, leftPowerRef, rightPowerRef) => {
+const createMetering = (mixerRef, isPlaying, setMasterMeter, leftPowerRef, rightPowerRef, effectsRef) => {
   // Only animate meter when transport is running.
   // This freezes *all* UI elements driven by `masterMeter` (waveform + readouts + bars)
   // when audio isn't actively playing.
@@ -13,6 +13,9 @@ const createMetering = (mixerRef, isPlaying, setMasterMeter, leftPowerRef, right
   // Reuse a single array to avoid allocating/copying 1024 samples every frame.
   // We'll only publish to React state at a lower rate (see below).
   let wfOut = []
+
+  const trackMap = { kick:1, snare:2, hihat:3, openHH:4, tom:5, clap:9, bass:6, chords:7, arp:8 }
+  let _loggedTrackMeters = false
 
   const tick = () => {
     const now = performance.now()
@@ -74,6 +77,32 @@ const createMetering = (mixerRef, isPlaying, setMasterMeter, leftPowerRef, right
         const leftLufs = leftRmsDb // approximate
         const rightLufs = rightRmsDb
 
+        // Read per-track meters if available (non-blocking, cheap). Map to dB.
+        const trackLevels = {}
+        try {
+          const fx = effectsRef?.current || {}
+          for (const [k, v] of Object.entries(fx)) {
+            try {
+              const raw = v?.meter?.getValue?.() ?? 0
+              trackLevels[trackMap[k] ?? k] = meterValueToDb(raw)
+            } catch {
+              // ignore
+            }
+          }
+        } catch {
+          // ignore
+        }
+        // DEBUG: log first meaningful activity we detect (one-time)
+        if (!_loggedTrackMeters) {
+          for (const val of Object.values(trackLevels)) {
+            if (typeof val === 'number' && val > -60) {
+              console.debug('audio:trackLevels sample', trackLevels)
+              _loggedTrackMeters = true
+              break
+            }
+          }
+        }
+
         setMasterMeter({
           waveform: wfOut,
           peakDb,
@@ -86,6 +115,7 @@ const createMetering = (mixerRef, isPlaying, setMasterMeter, leftPowerRef, right
           rightLufs,
           reverbVal,
           delayVal,
+          trackLevels,
         })
       }
       raf = requestAnimationFrame(tick)

@@ -232,14 +232,8 @@ const ChordsTrack = ({
               onChange={(v) => handleParamChange('detune', v)}
               color={track.color}
             />
-            <Knob 
-              label="Volume" 
-              value={chordParams?.volume ?? -10} 
-              min={-60} 
-              max={6} 
-              onChange={(v) => handleParamChange('volume', v)}
-              color={track.color}
-            />
+            {/* Volume moved to Mixer */}
+            <div style={{ width: '100%' }} />
            </div>
          </div>
 

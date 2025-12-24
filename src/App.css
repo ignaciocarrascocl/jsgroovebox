@@ -199,23 +199,39 @@
 
 /* Controls row: left (bpm+progression), right (meters+fx) */
 
-.controls-row {
-  display: grid;
-  /* Only the right column remains — it takes full available space */
-  grid-template-columns: 1fr;
-  gap: 14px;
-  padding: 12px 16px 6px;
-  align-items: start;
-  z-index: 100;
+.groovebox-section {
+  /* panel variables (can be overridden by specific containers) */
+  --panel-bg: rgba(20, 20, 35, 0.85);
+  --panel-border: rgba(255, 255, 255, 0.06);
+  --panel-radius: 12px;
+  --panel-shadow: rgba(0, 0, 0, 0.45) 0px 12px 30px;
+  --panel-color: white;
+  --panel-padding: 20px;
+
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+  color: var(--panel-color);
+  padding: var(--panel-padding);
+
   max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
   width: 100%;
   box-sizing: border-box;
-  background: rgba(20, 20, 35, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+}
+
+.controls-row {
+  display: grid;
+  /* Only the right column remains — it takes full available space */
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 2rem;
+  /* per-panel padding exposed as a variable (default is on .groovebox-section) */
+  --panel-padding: 12px 16px 6px;
+  align-items: start;
+  z-index: 100;
 }
 
 /* mobile-controls removed — header-mounted controls are always shown */
@@ -246,22 +262,7 @@
   /* Show tracks in three columns (desktop) so 6 rhythm + 3 synths form a 3x3 layout */
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  padding: 16px;
   margin-top: auto;
-  max-width: 1600px;
-  margin-left: auto;
-  margin-right: auto;
-width: 100%;
-    max-width: 1600px;
-    margin: 12px auto;
-    background: rgba(20, 20, 35, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 12px;
-    padding: 20px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-    color: white;
-    box-sizing: border-box;
 }
 
 /* Make the grid responsive and reduce number of columns on smaller viewports */
@@ -269,7 +270,7 @@ width: 100%;
   .tracks-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    padding: 12px;
+    --panel-padding: 12px;
     max-width: 980px;
   }
 }
@@ -278,9 +279,8 @@ width: 100%;
   .tracks-grid {
     grid-template-columns: 1fr;
     gap: 10px;
-    padding: 10px;
+    --panel-padding: 12px;
     max-width: 680px;
     border-radius: 10px;
-    padding: 12px;
   }
 }

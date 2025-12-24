@@ -100,6 +100,7 @@ const DEFAULT_MASTER_PARAMS = {
   eqHigh: 0,
   filterCutoff: 20000,
   filterReso: 0.7,
+  volume: 0,
 }
 
 const DEFAULT_BUS_PARAMS = {
@@ -150,17 +151,15 @@ function App() {
     getCurrentBassStep,
     getCurrentChordStep,
     getCurrentArpStep,
-    bpm,
-    setBpm,
     activeTracks,
     startTone,
     togglePlay,
     playTrack,
     masterMeter,
-  getMasterNode,
+    getMasterNode,
     setMasterParams: setEngineMasterParams,
     setBusParams: setEngineBusParams,
-  perfStats,
+    perfStats,
   } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, arpParams, songSettings, chordSteps)
 
   // Drive step-based UI off a low-rate pulse to keep controls responsive while playing.
@@ -431,15 +430,49 @@ function App() {
 
   // Show first 6 tracks (kick, snare, hihat, openHH, tom, clap)
   const visibleTracks = TRACKS.slice(0, 6)
-  
+
   // Get bass track (id: 6)
   const bassTrack = TRACKS.find(t => t.id === 6)
-  
+
   // Get chords track (id: 7)
   const chordsTrack = TRACKS.find(t => t.id === 7)
-  
+
   // Check if any track is soloed
   const hasSolo = Object.values(soloTracks).some(v => v)
+
+  // Track volumes aggregated for Mixer (per-track + melodic tracks)
+  const trackVolumes = TRACKS.reduce((acc, t) => {
+    if (t.id === 6) acc[6] = bassParams[6]?.volume ?? -6
+    else if (t.id === 7) acc[7] = chordParams[7]?.volume ?? -10
+    else if (t.id === 8) acc[8] = arpParams[8]?.volume ?? -6
+    else acc[t.id] = trackParams[t.id]?.volume ?? 0
+    return acc
+  }, {})
+
+  const handleMixerVolumeChange = (trackId, value) => {
+    // Drums
+    if ([1,2,3,4,5,9].includes(trackId)) {
+      handleParamChange(trackId, { ...trackParams[trackId], volume: value })
+      return
+    }
+    // Bass
+    if (trackId === 6) {
+      handleBassParamChange(6, { ...bassParams[6], volume: value })
+      return
+    }
+    if (trackId === 7) {
+      handleChordParamChange(7, { ...chordParams[7], volume: value })
+      return
+    }
+    if (trackId === 8) {
+      handleArpParamChange(8, { ...arpParams[8], volume: value })
+      return
+    }
+  }
+
+  const handleMasterVolumeChange = (value) => {
+    setMasterParams(prev => ({ ...prev, volume: value }))
+  }
 
   const handleEnterApp = async () => {
     // El primer gesto del usuario debe iniciar el audio en la mayoría de navegadores.
@@ -471,26 +504,23 @@ function App() {
         </div>
       )}
 
+      {/* Moved HeaderRow to be a direct child of .app-container so it is not affected by .tracks-container blur */}
+      {toneStarted && (
+        <HeaderRow
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          perf={perfStats}
+          onResetDefaults={handleResetDefaults}
+          startTone={startTone}
+          toneStarted={toneStarted}
+        />
+      )}
+
       <div className="tracks-container">
         {toneStarted ? (
           <>
-            <HeaderRow
-              isPlaying={isPlaying}
-              onTogglePlay={togglePlay}
-              perf={perfStats}
-              onResetDefaults={handleResetDefaults}
-              bpm={bpm}
-              onBpmChange={setBpm}
-              chordSteps={chordSteps}
-              getCurrentChordStep={getCurrentChordStep}
-              selectedPatterns={selectedPatterns}
-              customPatterns={customPatterns}
-              songSettings={songSettings}
-              startTone={startTone}
-              toneStarted={toneStarted}
-            />
-
-            <div className="controls-row">
+            {/* HeaderRow moved to app-container */}
+            <div className="controls-row groovebox-section">
               <div className="controls-right">
                 <MasterFX
                   masterParams={masterParams}
@@ -510,15 +540,30 @@ function App() {
               </div>
             </div>
 
-            <Mixer />
+            <Mixer
+              trackVolumes={trackVolumes}
+              mutedTracks={mutedTracks}
+              soloTracks={soloTracks}
+              onTrackVolumeChange={handleMixerVolumeChange}
+              onMuteToggle={handleMuteToggle}
+              onSoloToggle={handleSoloToggle}
+              masterVolume={masterParams.volume ?? 0}
+              onMasterVolumeChange={handleMasterVolumeChange}
+              busParams={busParams}
+              onBusParamChange={setBusParams}
+              activeTracks={activeTracks}
+              masterMeter={masterMeter}
+            />
 
             <Secuenciador
               showToast={showUndoToast}
               onChordStepsChange={setChordSteps}
               onSongSettingsChange={handleSongSettingsChange}
+              currentStep={getCurrentChordStep?.() ?? 0}
+              isPlaying={isPlaying}
             />
 
-            <div className="tracks-grid">
+            <div className="tracks-grid groovebox-section">
               {visibleTracks.map((track) => (
                 <Track
                   key={track.id}

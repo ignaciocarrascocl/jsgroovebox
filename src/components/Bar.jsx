@@ -2,7 +2,7 @@ import BarHeader from './BarHeader'
 import StepCell from './StepCell'
 import { formatChordLabel } from './secuenciadorHelpers'
 
-const Bar = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, moveBar, cloneBar, deleteBar, addBar, handleDragStart, handleDragOver, handleDrop, handleDragEnd, handleStepDragOver, handleStepDragEnter, handleStepDragLeave, handleStepDrop, handleStepsDrop, dragOverCell, updateNote, removeNote, handleMoveNoteDragStart, setIsResizing, setResizingData, clearBar, progressions, applyProgressionToBar }) => {
+const Bar = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, moveBar, cloneBar, deleteBar, addBar, handleDragStart, handleDragOver, handleDrop, handleDragEnd, handleStepDragOver, handleStepDragEnter, handleStepDragLeave, handleStepDrop, handleMovesDrop, dragOverCell, updateNote, removeNote, handleMoveNoteDragStart, setIsResizing, setResizingData, clearBar, progressions, applyProgressionToBar, currentStep = 0, isPlaying = false }) => {
   return (
     <div className="bar">
       <BarHeader
@@ -24,7 +24,7 @@ const Bar = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, moveBar, 
         applyProgressionToBar={applyProgressionToBar}
       />
 
-      <div className="steps" onDragOver={handleStepDragOver} onDrop={(e) => handleStepsDrop(e, barIndex)}>
+      <div className="steps" onDragOver={handleStepDragOver} onDrop={(e) => handleMovesDrop(e, barIndex)}>
         {[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(stepIndex => (
           <StepCell
             key={stepIndex}
@@ -43,6 +43,14 @@ const Bar = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, moveBar, 
             setResizingData={setResizingData}
           />
         ))}
+      </div>
+
+      {/* LED indicators row: continuous 64 subdivisions (one LED per subdivision) */}
+      <div className="step-leds step-leds-64" aria-hidden="true">
+        {Array.from({ length: 64 }).map((_, idx) => {
+          const isCurrent = isPlaying && (idx === currentStep)
+          return <div key={idx} className={`led step-sub-led ${isCurrent ? 'current' : ''}`} />
+        })}
       </div>
 
       {/* Debug: lista compacta de acordes colocados en esta parte */}

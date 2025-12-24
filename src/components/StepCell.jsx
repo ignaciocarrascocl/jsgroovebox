@@ -29,7 +29,9 @@ const StepCell = ({ bar, barIndex, stepIndex, dragOverCell, handleStepDragOver, 
       onDragLeave={(e) => handleStepDragLeave(e, barIndex, stepIndex)}
       onDrop={(e) => handleStepDrop(e, barIndex, stepIndex)}
     >
-      +
+      <div className="empty-step-inner" aria-hidden="true">
+        <div className="empty-plus">+</div>
+      </div>
     </div>
   )
 }

@@ -583,7 +583,7 @@ export const useAudioEngine = (selectedPatterns, customPatterns, trackParams = D
 
   // Meter + waveform polling
   useEffect(() => {
-    return createMetering(mixerRef, isPlaying, setMasterMeter, leftPowerRef, rightPowerRef)
+    return createMetering(mixerRef, isPlaying, setMasterMeter, leftPowerRef, rightPowerRef, effectsRef)
   }, [toneStarted, isPlaying])
 
   // Update track parameters in real-time (without recreating synths)
