@@ -4,38 +4,39 @@ export const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#',
 // Poly Synth patterns - 16 steps per bar, pattern repeats each bar
 // Each step can be 0-4: 0=rest, 1=root triad, 2=seventh, 3=inversion, 4=stab
 // The pattern is applied to each bar, chord changes every 16 steps
+const R = (p) => (Array.isArray(p) ? Array.from({ length: 64 }, (_, i) => p[i % p.length]) : p)
 export const POLY_SYNTH_PATTERNS = [
   // Basic patterns
-  { name: 'Whole Notes', pattern: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
-  { name: 'Half Notes', pattern: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0] },
-  { name: 'Quarter Notes', pattern: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0] },
-  { name: '8th Notes', pattern: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0] },
+  { name: 'Whole Notes', pattern: R([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0]) },
+  { name: 'Half Notes', pattern: R([1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0]) },
+  { name: 'Quarter Notes', pattern: R([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0]) },
+  { name: '8th Notes', pattern: R([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0]) },
   
   // Rhythmic patterns
-  { name: 'Reggae Skank', pattern: [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0] },
-  { name: 'Funk Stabs', pattern: [4,0,0,4, 0,0,4,0, 4,0,0,4, 0,4,0,0] },
-  { name: 'Disco', pattern: [1,0,1,0, 1,0,1,0, 2,0,1,0, 1,0,2,0] },
-  { name: 'House Piano', pattern: [1,0,0,1, 0,0,1,0, 0,0,1,0, 0,0,1,0] },
+  { name: 'Reggae Skank', pattern: R([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0]) },
+  { name: 'Funk Stabs', pattern: R([4,0,0,4, 0,0,4,0, 4,0,0,4, 0,4,0,0]) },
+  { name: 'Disco', pattern: R([1,0,1,0, 1,0,1,0, 2,0,1,0, 1,0,2,0]) },
+  { name: 'House Piano', pattern: R([1,0,0,1, 0,0,1,0, 0,0,1,0, 0,0,1,0]) },
   
   // Arpeggiated patterns
-  { name: 'Arpeggio Up', pattern: [1,0,3,0, 1,0,3,0, 1,0,3,0, 1,0,3,0] },
-  { name: 'Arpeggio Down', pattern: [3,0,1,0, 3,0,1,0, 3,0,1,0, 3,0,1,0] },
-  { name: 'Bounce', pattern: [1,0,3,1, 0,3,1,0, 1,0,3,1, 0,3,0,0] },
-  { name: 'Rolling', pattern: [1,3,1,3, 1,3,1,3, 2,3,2,3, 1,3,1,3] },
+  { name: 'Arpeggio Up', pattern: R([1,0,3,0, 1,0,3,0, 1,0,3,0, 1,0,3,0]) },
+  { name: 'Arpeggio Down', pattern: R([3,0,1,0, 3,0,1,0, 3,0,1,0, 3,0,1,0]) },
+  { name: 'Bounce', pattern: R([1,0,3,1, 0,3,1,0, 1,0,3,1, 0,3,0,0]) },
+  { name: 'Rolling', pattern: R([1,3,1,3, 1,3,1,3, 2,3,2,3, 1,3,1,3]) },
   
   // Syncopated patterns
-  { name: 'Syncopated', pattern: [1,0,0,1, 0,0,0,1, 0,0,1,0, 0,1,0,0] },
-  { name: 'Offbeat', pattern: [0,0,1,0, 0,0,2,0, 0,0,1,0, 0,0,3,0] },
-  { name: 'Shuffle', pattern: [1,0,0,1, 0,1,0,0, 2,0,0,1, 0,2,0,0] },
+  { name: 'Syncopated', pattern: R([1,0,0,1, 0,0,0,1, 0,0,1,0, 0,1,0,0]) },
+  { name: 'Offbeat', pattern: R([0,0,1,0, 0,0,2,0, 0,0,1,0, 0,0,3,0]) },
+  { name: 'Shuffle', pattern: R([1,0,0,1, 0,1,0,0, 2,0,0,1, 0,2,0,0]) },
   
   // Extended/jazzy
-  { name: 'Seventh Emphasis', pattern: [2,0,0,0, 1,0,0,0, 2,0,0,0, 1,0,0,0] },
-  { name: 'Jazz Comp', pattern: [2,0,0,2, 0,0,2,0, 2,0,0,2, 0,2,0,0] },
-  { name: 'Ballad', pattern: [1,0,0,0, 2,0,0,0, 1,0,0,0, 3,0,0,0] },
+  { name: 'Seventh Emphasis', pattern: R([2,0,0,0, 1,0,0,0, 2,0,0,0, 1,0,0,0]) },
+  { name: 'Jazz Comp', pattern: R([2,0,0,2, 0,0,2,0, 2,0,0,2, 0,2,0,0]) },
+  { name: 'Ballad', pattern: R([1,0,0,0, 2,0,0,0, 1,0,0,0, 3,0,0,0]) },
   
   // Sustained
-  { name: 'Pad Sustain', pattern: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
-  { name: 'Long Waves', pattern: [1,0,0,0, 0,0,0,0, 2,0,0,0, 0,0,0,0] },
+  { name: 'Pad Sustain', pattern: R([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0]) },
+  { name: 'Long Waves', pattern: R([1,0,0,0, 0,0,0,0, 2,0,0,0, 0,0,0,0]) },
 ]
 
 // Wave types for synth

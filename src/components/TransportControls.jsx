@@ -48,7 +48,7 @@ const TransportControls = ({
       <div className="transport-right">
         {/* Step Indicator - Horizontal */}
         <div className="step-indicator">
-          {Array.from({ length: 16 }, (_, i) => (
+          {Array.from({ length: 64 }, (_, i) => (
             <div
               key={i}
               className={`step ${currentStep === i ? 'active' : ''} ${i % 4 === 0 ? 'beat' : ''}`}

@@ -201,7 +201,7 @@
 
 .chord-pattern-accordion .header-pattern {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
+  grid-template-columns: repeat(64, 1fr);
   gap: 1px;
   flex: 1;
 }
@@ -284,7 +284,7 @@
 
 .chord-pattern-accordion .option-pattern {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
+  grid-template-columns: repeat(64, 1fr);
   gap: 1px;
   flex: 1;
 }
@@ -358,7 +358,7 @@
 /* Chord Pattern Editor */
 .chord-pattern-editor {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
+  grid-template-columns: repeat(64, 1fr);
   gap: 2px;
 }
 
@@ -396,12 +396,12 @@
 
 .chord-pattern-step.step-type-3 {
   background: color-mix(in srgb, var(--step-color) 60%, cyan);
-  color: #1a1a28;
+  color: #1a1a1a;
 }
 
 .chord-pattern-step.step-type-4 {
   background: color-mix(in srgb, var(--step-color) 90%, white);
-  color: #1a1a28;
+  color: #1a1a1a;
 }
 
 .chord-pattern-step.current {

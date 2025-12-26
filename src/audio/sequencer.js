@@ -8,11 +8,14 @@ import { getBassNote, getChordNotes, getBassNoteFromRoot, getChordNotesFromRoot 
 
 // Helper to check if a track should play
 const shouldTrackPlay = (trackId, mutedTracksRef, soloTracksRef) => {
-  const hasSolo = Object.values(soloTracksRef.current).some(v => v)
+  const muted = mutedTracksRef?.current || {}
+  const solo = soloTracksRef?.current || {}
+  const hasSolo = Object.values(solo).some(Boolean)
   if (hasSolo) {
-    return soloTracksRef.current[trackId] === true
+    return !!solo[trackId]
   }
-  return !mutedTracksRef.current[trackId]
+  // Explicitly treat true as muted; undefined means not muted
+  return muted[trackId] !== true
 }
 
 // Play a single track note
@@ -89,6 +92,9 @@ const playTrackNote = (trackId, synthsRef, songSettingsRef, trackParamsRef) => {
   }
 }
 
+// Helper for pattern truthiness
+const isValueActive = (v) => (typeof v === 'number' ? v > 0 : Boolean(v))
+
 // Main sequencer callback
 const createSequencerCallback = (
   selectedPatternsRef,
@@ -109,6 +115,12 @@ const createSequencerCallback = (
   setActiveTracks,
   transportClearEventIdRef
 ) => {
+  // Cache transport & base frequencies to avoid per-tick allocation
+  const transport = (typeof Tone.getTransport === 'function' ? Tone.getTransport() : Tone.Transport)
+  const baseKickFreq = Tone.Frequency('C1').toFrequency()
+  const baseHihatFreq = Tone.Frequency('C6').toFrequency()
+  const baseTomFreq = Tone.Frequency('C2').toFrequency()
+
   return (time, step) => {
     currentStepRef.current = step
 
@@ -126,6 +138,10 @@ const createSequencerCallback = (
     const tomPattern = currentCustomPatterns[5] || PATTERNS.tom[currentSelectedPatterns[5]]?.pattern || []
     const clapPattern = currentCustomPatterns[9] || PATTERNS.clap[currentSelectedPatterns[9]]?.pattern || []
 
+    // Absolute step across the full 64-step cycle (one step = 1 sixteenth note)
+    // bassStepRef tracks the absolute 0..63 position and is authoritative for timing/alignment.
+    const absoluteStep = bassStepRef.current
+
     // Bass pattern - uses global song settings for key/progression
     const bassPatternIndex = currentSelectedPatterns[6] ?? 0
     const bassPattern = currentCustomPatterns[6] || MONO_SYNTH_PATTERNS[bassPatternIndex]?.pattern || []
@@ -140,10 +156,10 @@ const createSequencerCallback = (
     const pitchOffset4 = currentTrackParams[4]?.pitch || 0
     const pitchOffset5 = currentTrackParams[5]?.pitch || 0
 
-    // Swing: apply to the off-beat 8ths within each beat in a 16-step grid (steps 2,6,10,14).
-    // This makes swing affect common 8th patterns (0,2,4,6...) consistently.
-    // swing=1 => triplet feel: delay by 1/6 beat = (2/3)*16n.
-    const isSwingStep = step % 4 === 2
+    // Swing: apply to the off-beat 8ths within each beat in a 64-step (4-bar) grid.
+    // In the original 16-step per-bar grid swing targeted indices 2,6,10,14 (step % 4 === 2).
+    // In the 64-step absolute grid these map to indices 8,24,40,56 => absoluteStep % 16 === 8
+    const isSwingStep = (absoluteStep % 16) === 8
     const sixteenthNoteDuration = Tone.Time('16n').toSeconds()
 
     const getSwingOffset = (trackId) => {
@@ -152,45 +168,57 @@ const createSequencerCallback = (
       return swing * (sixteenthNoteDuration * (2 / 3))
     }
 
+    // Optimizations: cache synths and use shared helpers
+    const synths = synthsRef.current || {}
+    const hasSecuenciadorControl = Array.isArray(chordStepsRef?.current)
+
     // Track which tracks are active this step for visual feedback
     const activeThisStep = {}
 
-    if (kickPattern[step] && shouldTrackPlay(1, mutedTracksRef, soloTracksRef)) {
-      const freq = Tone.Frequency('C1').transpose(pitchOffset1).toFrequency()
+    // Use absolute 64-step index for pattern lookup so patterns can be full 64-step arrays.
+    const kickVal = (kickPattern.length) ? kickPattern[absoluteStep % kickPattern.length] : undefined
+    if (isValueActive(kickVal) && shouldTrackPlay(1, mutedTracksRef, soloTracksRef)) {
+      const freq = baseKickFreq * Math.pow(2, pitchOffset1 / 12)
       const swingOffset = getSwingOffset(1)
-      synthsRef.current.kick?.triggerAttackRelease(freq, '8n', time + swingOffset)
+      synths.kick?.triggerAttackRelease(freq, '8n', time + swingOffset)
       activeThisStep[1] = true
     }
-    if (snarePattern[step] && shouldTrackPlay(2, mutedTracksRef, soloTracksRef)) {
+    const snareVal = (snarePattern.length) ? snarePattern[absoluteStep % snarePattern.length] : undefined
+    if (isValueActive(snareVal) && shouldTrackPlay(2, mutedTracksRef, soloTracksRef)) {
       const swingOffset = getSwingOffset(2)
-      synthsRef.current.snare?.triggerAttackRelease('8n', time + swingOffset)
+      synths.snare?.triggerAttackRelease('8n', time + swingOffset)
       activeThisStep[2] = true
     }
-    if (hihatPattern[step] && shouldTrackPlay(3, mutedTracksRef, soloTracksRef)) {
-      const freq = Tone.Frequency('C6').transpose(pitchOffset3).toFrequency()
+    const hihatVal = (hihatPattern.length) ? hihatPattern[absoluteStep % hihatPattern.length] : undefined
+    if (isValueActive(hihatVal) && shouldTrackPlay(3, mutedTracksRef, soloTracksRef)) {
+      const freq = baseHihatFreq * Math.pow(2, pitchOffset3 / 12)
       const swingOffset = getSwingOffset(3)
-      synthsRef.current.hihat?.triggerAttackRelease(freq, '32n', time + swingOffset)
+      synths.hihat?.triggerAttackRelease(freq, '32n', time + swingOffset)
       activeThisStep[3] = true
     }
-    if (openHHPattern[step] && shouldTrackPlay(4, mutedTracksRef, soloTracksRef)) {
-      const freq = Tone.Frequency('C6').transpose(pitchOffset4).toFrequency()
+    const openHHVal = (openHHPattern.length) ? openHHPattern[absoluteStep % openHHPattern.length] : undefined
+    if (isValueActive(openHHVal) && shouldTrackPlay(4, mutedTracksRef, soloTracksRef)) {
+      const freq = baseHihatFreq * Math.pow(2, pitchOffset4 / 12)
       const swingOffset = getSwingOffset(4)
-      synthsRef.current.openHH?.triggerAttackRelease(freq, '8n', time + swingOffset)
+      synths.openHH?.triggerAttackRelease(freq, '8n', time + swingOffset)
       activeThisStep[4] = true
     }
-    if (tomPattern[step] && shouldTrackPlay(5, mutedTracksRef, soloTracksRef)) {
-      const freq = Tone.Frequency('C2').transpose(pitchOffset5).toFrequency()
+    const tomVal = (tomPattern.length) ? tomPattern[absoluteStep % tomPattern.length] : undefined
+    if (isValueActive(tomVal) && shouldTrackPlay(5, mutedTracksRef, soloTracksRef)) {
+      const freq = baseTomFreq * Math.pow(2, pitchOffset5 / 12)
       const swingOffset = getSwingOffset(5)
-      synthsRef.current.tom?.triggerAttackRelease(freq, '8n', time + swingOffset)
+      synths.tom?.triggerAttackRelease(freq, '8n', time + swingOffset)
       activeThisStep[5] = true
     }
-    if (clapPattern[step] && shouldTrackPlay(9, mutedTracksRef, soloTracksRef)) {
+    const clapVal = (clapPattern.length) ? clapPattern[absoluteStep % clapPattern.length] : undefined
+    if (isValueActive(clapVal) && shouldTrackPlay(9, mutedTracksRef, soloTracksRef)) {
       const swingOffset = getSwingOffset(9)
-      synthsRef.current.clap?.triggerAttackRelease('8n', time + swingOffset)
+      synths.clap?.triggerAttackRelease('8n', time + swingOffset)
       activeThisStep[9] = true
     }
 
     // Bass synth - 64-step progression (4 bars x 16 steps)
+    // Increment bassStepRef for the next callback; currentBassStepRef stores the step that was just processed (pre-increment)
     const bassStep = bassStepRef.current
     bassStepRef.current = (bassStep + 1) % MONO_SYNTH_TOTAL_STEPS
     currentBassStepRef.current = bassStep
@@ -199,24 +227,23 @@ const createSequencerCallback = (
     const barIndex = Math.floor(bassStep / 16)
     const chordDegree = bassProgression[barIndex]
 
-    // Get pattern step (patterns are 16 steps, repeat each bar)
-    const patternStep = bassStep % 16
+    // Get pattern step (supports both legacy 16-step presets or new 64-step presets)
+    const patternStep = bassPattern.length ? (bassStep % bassPattern.length) : (bassStep % 16)
     const bassNoteType = bassPattern[patternStep]
 
     // Determine if Secuenciador is present (explicit controller). When present, it is authoritative:
-    const hasSecuenciadorControl = Array.isArray(chordStepsRef.current)
     if (hasSecuenciadorControl) {
       const absoluteStep = bassStep
       const stepChord = chordStepsRef.current?.[absoluteStep]
-      if (stepChord && stepChord.root && !stepChord.silent) {
+      if (stepChord && stepChord.root != null && !stepChord.silent) {
         if (!shouldTrackPlay(6, mutedTracksRef, soloTracksRef)) {
           // Skip logging for brevity
         } else {
           // Play bass according to the bass pattern at 16th-note ticks, but use the secuenciador root
-          if (bassNoteType > 0) {
+          if (isValueActive(bassNoteType)) {
             const bassNote = getBassNoteFromRoot(stepChord.root, bassNoteType || 1, 1)
             if (bassNote) {
-              synthsRef.current.bass?.triggerAttackRelease(bassNote, '8n', time)
+              synths.bass?.triggerAttackRelease(bassNote, '8n', time)
               activeThisStep[6] = true
             }
           }
@@ -224,10 +251,10 @@ const createSequencerCallback = (
       }
     } else {
       // No secuenciador control present: fallback to progression-based behavior
-      if (bassNoteType > 0 && shouldTrackPlay(6, mutedTracksRef, soloTracksRef)) {
+      if (isValueActive(bassNoteType) && shouldTrackPlay(6, mutedTracksRef, soloTracksRef)) {
         const bassNote = getBassNote(bassKey, chordDegree, bassNoteType, bassMode, 1)
         if (bassNote) {
-          synthsRef.current.bass?.triggerAttackRelease(bassNote, '8n', time)
+          synths.bass?.triggerAttackRelease(bassNote, '8n', time)
           activeThisStep[6] = true
         }
       }
@@ -238,40 +265,40 @@ const createSequencerCallback = (
     const chordPattern = currentCustomPatterns[7] || POLY_SYNTH_PATTERNS[chordPatternIndex]?.pattern || []
 
     const chordStep = chordStepRef.current
+    // Increment chordStepRef for the next callback; currentChordStepRef stores the step that was just processed (pre-increment)
     chordStepRef.current = (chordStep + 1) % POLY_SYNTH_TOTAL_STEPS
     currentChordStepRef.current = chordStep
 
     const chordBarIndex = Math.floor(chordStep / 16)
     const chordChordDegree = bassProgression[chordBarIndex]
-    const chordPatternStep = chordStep % 16
+    const chordPatternStep = chordPattern.length ? (chordStep % chordPattern.length) : (chordStep % 16)
     const chordType = chordPattern[chordPatternStep]
 
-    const hasSecuenciadorControlChords = Array.isArray(chordStepsRef.current)
-    if (hasSecuenciadorControlChords) {
+    if (hasSecuenciadorControl) {
       const absoluteStep = chordStep
       const stepChord = chordStepsRef.current?.[absoluteStep]
-      if (stepChord && stepChord.root && !stepChord.silent) {
+      if (stepChord && stepChord.root != null && !stepChord.silent) {
         if (!shouldTrackPlay(7, mutedTracksRef, soloTracksRef)) {
           // Skip
         } else {
-          const rawPatternVal = chordPattern[absoluteStep % 16]
-          if (typeof rawPatternVal === 'number' && rawPatternVal > 0) {
-            const patternVal = rawPatternVal
+          const rawPatternVal = chordPattern.length ? chordPattern[absoluteStep % chordPattern.length] : chordPattern[absoluteStep % 16]
+          if (isValueActive(rawPatternVal)) {
+            const patternVal = typeof rawPatternVal === 'number' ? rawPatternVal : 1
             const chordNotes = getChordNotesFromRoot(stepChord.root, patternVal, stepChord.type || bassMode, 3)
             if (chordNotes) {
-              const finalDuration = Tone.Time('4n').toSeconds()
-              synthsRef.current.chords?.triggerAttackRelease(chordNotes, finalDuration, time)
+              const finalDuration = '4n'
+              synths.chords?.triggerAttackRelease(chordNotes, finalDuration, time)
               activeThisStep[7] = true
             }
           }
         }
       }
     } else {
-      if (chordType > 0 && shouldTrackPlay(7, mutedTracksRef, soloTracksRef)) {
+      if (isValueActive(chordType) && shouldTrackPlay(7, mutedTracksRef, soloTracksRef)) {
         const chordNotes = getChordNotes(bassKey, chordChordDegree, chordType, bassMode, 3)
         if (chordNotes) {
           const duration = chordType === 4 ? '16n' : '4n'
-          synthsRef.current.chords?.triggerAttackRelease(chordNotes, duration, time)
+          synths.chords?.triggerAttackRelease(chordNotes, duration, time)
           activeThisStep[7] = true
         }
       }
@@ -282,35 +309,37 @@ const createSequencerCallback = (
     const arpPattern = currentCustomPatterns[8] || ARP_SYNTH_PATTERNS[arpPatternIndex]?.pattern || []
 
     const arpStep = arpStepRef.current
+    // Increment arpStepRef for the next callback; currentArpStepRef stores the step that was just processed (pre-increment)
     arpStepRef.current = (arpStep + 1) % ARP_SYNTH_TOTAL_STEPS
     currentArpStepRef.current = arpStep
 
     const arpBarIndex = Math.floor(arpStep / 16)
     const arpChordDegree = bassProgression[arpBarIndex]
-    const arpPatternStep = arpStep % 16
+    const arpPatternStep = arpPattern.length ? (arpStep % arpPattern.length) : (arpStep % 16)
     const arpNoteType = arpPattern[arpPatternStep]
 
-    const hasSecuenciadorControlArp = Array.isArray(chordStepsRef.current)
-    if (hasSecuenciadorControlArp) {
+    if (hasSecuenciadorControl) {
       const absoluteStep = arpStep
       const stepChord = chordStepsRef.current?.[absoluteStep]
-      if (stepChord && stepChord.root && !stepChord.silent && shouldTrackPlay(8, mutedTracksRef, soloTracksRef)) {
-        const rawArpVal = arpPattern[arpStep % 16]
-        const effectiveArpType = (typeof rawArpVal === 'number' && rawArpVal > 0) ? rawArpVal : 1
-        const arpNotes = getChordNotesFromRoot(stepChord.root, effectiveArpType, stepChord.type || bassMode, 4)
-        if (arpNotes && rawArpVal > 0) {
-          const note = arpNotes[0]
-          synthsRef.current.arp?.triggerAttackRelease(note, '16n', time)
-          activeThisStep[8] = true
+      if (stepChord && stepChord.root != null && !stepChord.silent && shouldTrackPlay(8, mutedTracksRef, soloTracksRef)) {
+        const rawArpVal = arpPattern.length ? arpPattern[arpStep % arpPattern.length] : arpPattern[arpStep % 16]
+        if (isValueActive(rawArpVal)) {
+          const effectiveArpType = typeof rawArpVal === 'number' ? rawArpVal : 1
+          const arpNotes = getChordNotesFromRoot(stepChord.root, effectiveArpType, stepChord.type || bassMode, 4)
+          if (arpNotes) {
+            const note = arpNotes[0]
+            synths.arp?.triggerAttackRelease(note, '16n', time)
+            activeThisStep[8] = true
+          }
         }
       }
     } else {
-      if (arpNoteType > 0 && shouldTrackPlay(8, mutedTracksRef, soloTracksRef)) {
+      if (isValueActive(arpNoteType) && shouldTrackPlay(8, mutedTracksRef, soloTracksRef)) {
         const effectiveArpType = arpNoteType
         const arpNotes = getChordNotes(bassKey, arpChordDegree, effectiveArpType, bassMode, 4)
         if (arpNotes) {
           const note = arpNotes[0]
-          synthsRef.current.arp?.triggerAttackRelease(note, '16n', time)
+          synths.arp?.triggerAttackRelease(note, '16n', time)
           activeThisStep[8] = true
         }
       }
@@ -321,19 +350,22 @@ const createSequencerCallback = (
       setActiveTracks(activeThisStep)
 
       // Cancel any previously scheduled clear to avoid building up a queue
-      if (transportClearEventIdRef.current != null) {
+      if (transportClearEventIdRef.current != null && transport && typeof transport.clear === 'function') {
         try {
-          Tone.getTransport().clear(transportClearEventIdRef.current)
+          transport.clear(transportClearEventIdRef.current)
         } catch {
           // ignore
         }
         transportClearEventIdRef.current = null
       }
 
-      transportClearEventIdRef.current = Tone.getTransport().scheduleOnce(() => {
-        setActiveTracks({})
-        transportClearEventIdRef.current = null
-      }, time + 0.1)
+      const scheduleTime = typeof time === 'number' ? time + 0.1 : Tone.Time(time).toSeconds() + 0.1
+      transportClearEventIdRef.current = transport && typeof transport.scheduleOnce === 'function'
+        ? transport.scheduleOnce(() => {
+            setActiveTracks({})
+            transportClearEventIdRef.current = null
+          }, scheduleTime)
+        : null
     }
   }
 }

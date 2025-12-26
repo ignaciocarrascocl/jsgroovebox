@@ -37,7 +37,7 @@ const PatternSelector = ({
       {/* Custom Pattern Editor */}
       {useCustomPattern && (
         <PatternEditor
-          pattern={customPattern || Array(16).fill(0)}
+          pattern={customPattern || Array(64).fill(0)}
           onChange={(p) => onCustomPatternChange(p)}
           currentStep={currentStep}
           isPlaying={isPlaying}

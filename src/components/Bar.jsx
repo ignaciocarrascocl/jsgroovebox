@@ -76,7 +76,8 @@ const BassPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color })
   const getStepLabel = (value) => {
     switch (value) { case 1: return 'R'; case 2: return '5'; case 3: return 'O'; default: return '' }
   }
-  const patternStep = currentStep % 16
+  const patternLen = (pattern && pattern.length) || 16
+  const patternStep = currentStep % patternLen
   return (
     <div className="bass-pattern-editor">
       {pattern.map((step, idx) => (
@@ -90,8 +91,9 @@ const BassPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color })
 
 const BassPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, isPlaying, color }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const patternStep = currentStep % 16
   const selectedPattern = patterns[selectedIndex]
+  const patternLen = (selectedPattern?.pattern?.length) || 16
+  const patternStep = currentStep % patternLen
   const handleSelect = (idx) => { onSelect(idx); setIsOpen(false) }
   const getStepClass = (step) => (step === 0 ? '' : `step-type-${step}`)
   return (
@@ -129,7 +131,8 @@ const ChordPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }
     onChange(newPattern)
   }
   const getStepLabel = (value) => { switch (value) { case 1: return 'T'; case 2: return '7'; case 3: return 'I'; case 4: return 'S'; default: return '' } }
-  const patternStep = currentStep % 16
+  const patternLen = (pattern && pattern.length) || 16
+  const patternStep = currentStep % patternLen
   return (
     <div className="chord-pattern-editor">
       {pattern.map((step, idx) => (
@@ -143,8 +146,9 @@ const ChordPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }
 
 const ChordPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, isPlaying, color }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const patternStep = currentStep % 16
   const selectedPattern = patterns[selectedIndex]
+  const patternLen = (selectedPattern?.pattern?.length) || 16
+  const patternStep = currentStep % patternLen
   const handleSelect = (idx) => { onSelect(idx); setIsOpen(false) }
   const getStepClass = (step) => (step === 0 ? '' : `step-type-${step}`)
   return (
@@ -178,7 +182,8 @@ const ChordPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep,
 const ArpPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) => {
   const cycleStep = (index) => { const newPattern = [...pattern]; newPattern[index] = (newPattern[index] + 1) % 4; onChange(newPattern) }
   const getStepLabel = (value) => { switch (value) { case 1: return '1'; case 2: return '2'; case 3: return '3'; default: return '' } }
-  const patternStep = currentStep % 16
+  const patternLen = (pattern && pattern.length) || 16
+  const patternStep = currentStep % patternLen
   return (
     <div className="bass-pattern-editor">
       {pattern.map((step, idx) => (
@@ -192,8 +197,9 @@ const ArpPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) 
 
 const ArpPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, isPlaying, color }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const patternStep = currentStep % 16
   const selectedPattern = patterns[selectedIndex]
+  const patternLen = (selectedPattern?.pattern?.length) || 16
+  const patternStep = currentStep % patternLen
   const handleSelect = (idx) => { onSelect(idx); setIsOpen(false) }
   const getStepClass = (step) => (step === 0 ? '' : `step-type-${step}`)
   return (

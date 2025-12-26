@@ -4,32 +4,33 @@ export const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#',
 // Mono Synth patterns - 16 steps per bar, pattern repeats each bar
 // Each step can be 0-3: 0=rest, 1=root, 2=fifth, 3=octave
 // The pattern is applied to each bar, chord changes every 16 steps
+const R = (p) => (Array.isArray(p) ? Array.from({ length: 64 }, (_, i) => p[i % p.length]) : p)
 export const MONO_SYNTH_PATTERNS = [
   // Basic patterns
-  { name: 'Straight 4', pattern: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0] },
-  { name: 'Octave Jump', pattern: [1,0,3,0, 1,0,3,0, 1,0,3,0, 1,0,3,0] },
-  { name: 'Root-Fifth', pattern: [1,0,2,0, 1,0,2,0, 1,0,2,0, 1,0,2,0] },
-  { name: '8ths Root', pattern: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0] },
+  { name: 'Straight 4', pattern: R([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0]) },
+  { name: 'Octave Jump', pattern: R([1,0,3,0, 1,0,3,0, 1,0,3,0, 1,0,3,0]) },
+  { name: 'Root-Fifth', pattern: R([1,0,2,0, 1,0,2,0, 1,0,2,0, 1,0,2,0]) },
+  { name: '8ths Root', pattern: R([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0]) },
   
   // Groovy patterns  
-  { name: 'Funky', pattern: [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,1,0,0] },
-  { name: 'Disco', pattern: [1,0,1,0, 1,0,1,0, 3,0,1,0, 1,0,2,0] },
-  { name: 'House', pattern: [1,0,0,0, 1,0,0,1, 0,0,1,0, 0,0,1,0] },
-  { name: 'Techno', pattern: [1,1,0,1, 1,0,0,1, 1,1,0,1, 1,0,0,0] },
+  { name: 'Funky', pattern: R([1,0,0,1, 0,0,1,0, 1,0,0,1, 0,1,0,0]) },
+  { name: 'Disco', pattern: R([1,0,1,0, 1,0,1,0, 3,0,1,0, 1,0,2,0]) },
+  { name: 'House', pattern: R([1,0,0,0, 1,0,0,1, 0,0,1,0, 0,0,1,0]) },
+  { name: 'Techno', pattern: R([1,1,0,1, 1,0,0,1, 1,1,0,1, 1,0,0,0]) },
   
   // Walking/melodic patterns
-  { name: 'Walking', pattern: [1,0,2,0, 3,0,2,0, 1,0,2,0, 3,0,2,0] },
-  { name: 'Climb', pattern: [1,0,0,0, 2,0,0,0, 3,0,0,0, 2,0,0,0] },
-  { name: 'Bounce', pattern: [1,0,3,0, 1,0,3,0, 2,0,3,0, 2,0,1,0] },
-  { name: 'Arpeggio', pattern: [1,0,2,0, 3,0,2,0, 1,0,3,0, 2,0,1,0] },
+  { name: 'Walking', pattern: R([1,0,2,0, 3,0,2,0, 1,0,2,0, 3,0,2,0]) },
+  { name: 'Climb', pattern: R([1,0,0,0, 2,0,0,0, 3,0,0,0, 2,0,0,0]) },
+  { name: 'Bounce', pattern: R([1,0,3,0, 1,0,3,0, 2,0,3,0, 2,0,1,0]) },
+  { name: 'Arpeggio', pattern: R([1,0,2,0, 3,0,2,0, 1,0,3,0, 2,0,1,0]) },
   
   // Syncopated patterns
-  { name: 'Offbeat', pattern: [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0] },
-  { name: 'Syncopated', pattern: [1,0,0,1, 0,0,0,1, 0,0,1,0, 0,1,0,0] },
-  { name: 'Shuffle', pattern: [1,0,0,1, 0,1,0,0, 1,0,0,1, 0,1,0,0] },
+  { name: 'Offbeat', pattern: R([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0]) },
+  { name: 'Syncopated', pattern: R([1,0,0,1, 0,0,0,1, 0,0,1,0, 0,1,0,0]) },
+  { name: 'Shuffle', pattern: R([1,0,0,1, 0,1,0,0, 1,0,0,1, 0,1,0,0]) },
   
   // Driving/aggressive
-  { name: '16ths', pattern: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1] },
+  { name: '16ths', pattern: R([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1]) },
 ]
 
 // Wave types for synth

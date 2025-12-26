@@ -344,7 +344,7 @@
 /* Pattern Editor */
 .pattern-editor {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
+  grid-template-columns: repeat(64, 1fr);
   gap: 2px;
 }
 
@@ -399,7 +399,7 @@
 
 .header-pattern {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
+  grid-template-columns: repeat(64, 1fr);
   gap: 1px;
   flex: 1;
 }
@@ -492,7 +492,7 @@
 
 .option-pattern {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
+  grid-template-columns: repeat(64, 1fr);
   gap: 1px;
   flex: 1;
 }
@@ -544,7 +544,7 @@
 
 .preset-mini-pattern {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
+  grid-template-columns: repeat(64, 1fr);
   gap: 1px;
   margin-bottom: 2px;
 }

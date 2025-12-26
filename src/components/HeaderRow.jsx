@@ -1,6 +1,7 @@
 import './HeaderRow.css'
+import LeftControls from './LeftControls'
 
-const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, startTone, toneStarted }) => {
+const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, startTone, toneStarted, bpm, onBpmChange }) => {
   const usedMb = perf?.usedJSHeapSizeMb
   const fps = perf?.fps
 
@@ -17,6 +18,8 @@ const HeaderRow = ({ isPlaying, onTogglePlay, perf, onResetDefaults, startTone, 
                 <div className="logo-sub">Caja de ritmos con Tone.js</div>
               </div>
             </div>
+            {/* Compact BPM control */}
+            <LeftControls compact bpm={bpm} onBpmChange={onBpmChange} />
           </div>
 
           <div className="header-center">

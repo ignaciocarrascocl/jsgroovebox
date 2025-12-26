@@ -1,17 +1,18 @@
 // Arp Synth patterns - 16 steps per bar, pattern repeats each bar
 // Each step can be 0-3: 0=rest, 1=first chord note, 2=second chord note, 3=third chord note (or octave)
+const R = (p) => (Array.isArray(p) ? Array.from({ length: 64 }, (_, i) => p[i % p.length]) : p)
 export const ARP_SYNTH_PATTERNS = [
-  { name: 'Off', pattern: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
-  { name: 'Sparse', pattern: [1,0,0,0, 0,0,1,0, 0,0,0,0, 0,1,0,0] },
-  { name: '8th Arp', pattern: [1,0,2,0, 1,0,3,0, 1,0,2,0, 1,0,3,0] },
-  { name: 'Triplets', pattern: [1,2,3, 0,1,2,3, 0,1,2,3, 0,1,2,3] },
-  { name: 'Up', pattern: [1,0,2,0, 3,0,2,0, 1,0,2,0, 3,0,2,0] },
-  { name: 'Down', pattern: [3,0,2,0, 1,0,2,0, 3,0,2,0, 1,0,2,0] },
-  { name: 'Rolling', pattern: [1,2,3,2, 1,2,3,2, 1,2,3,2, 1,2,3,2] },
-  { name: 'Ping-Pong', pattern: [1,2,3,2, 3,2,1,2, 1,2,3,2, 3,2,1,2] },
-  { name: 'Staccato', pattern: [1,0,1,0, 2,0,2,0, 3,0,3,0, 1,0,1,0] },
-  { name: 'Dense', pattern: [1,2,3,1, 2,3,1,2, 3,1,2,3, 1,2,3,1] },
-  { name: 'Syncopated', pattern: [1,0,2,0, 0,3,0,2, 1,0,2,0, 0,3,0,2] },
+  { name: 'Off', pattern: R([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0]) },
+  { name: 'Sparse', pattern: R([1,0,0,0, 0,0,1,0, 0,0,0,0, 0,1,0,0]) },
+  { name: '8th Arp', pattern: R([1,0,2,0, 1,0,3,0, 1,0,2,0, 1,0,3,0]) },
+  { name: 'Triplets', pattern: R([1,2,3, 0,1,2,3, 0,1,2,3, 0,1,2,3]) },
+  { name: 'Up', pattern: R([1,0,2,0, 3,0,2,0, 1,0,2,0, 3,0,2,0]) },
+  { name: 'Down', pattern: R([3,0,2,0, 1,0,2,0, 3,0,2,0, 1,0,2,0]) },
+  { name: 'Rolling', pattern: R([1,2,3,2, 1,2,3,2, 1,2,3,2, 1,2,3,2]) },
+  { name: 'Ping-Pong', pattern: R([1,2,3,2, 3,2,1,2, 1,2,3,2, 3,2,1,2]) },
+  { name: 'Staccato', pattern: R([1,0,1,0, 2,0,2,0, 3,0,3,0, 1,0,1,0]) },
+  { name: 'Dense', pattern: R([1,2,3,1, 2,3,1,2, 3,1,2,3, 1,2,3,1]) },
+  { name: 'Syncopated', pattern: R([1,0,2,0, 0,3,0,2, 1,0,2,0, 0,3,0,2]) },
 ]
 
 export const WAVE_TYPES = ['sine', 'triangle', 'sawtooth', 'square']

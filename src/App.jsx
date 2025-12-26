@@ -160,6 +160,8 @@ function App() {
     setMasterParams: setEngineMasterParams,
     setBusParams: setEngineBusParams,
     perfStats,
+    bpm,
+    setBpm,
   } = useAudioEngine(selectedPatterns, customPatterns, trackParams, mutedTracks, soloTracks, bassParams, chordParams, arpParams, songSettings, chordSteps)
 
   // Drive step-based UI off a low-rate pulse to keep controls responsive while playing.
@@ -508,11 +510,17 @@ function App() {
       {toneStarted && (
         <HeaderRow
           isPlaying={isPlaying}
-          onTogglePlay={togglePlay}
+          onTogglePlay={async () => {
+            // Ensure audio context started before toggling play
+            if (!toneStarted) await startTone()
+            togglePlay()
+          }}
           perf={perfStats}
           onResetDefaults={handleResetDefaults}
           startTone={startTone}
           toneStarted={toneStarted}
+          bpm={bpm}
+          onBpmChange={setBpm}
         />
       )}
 
