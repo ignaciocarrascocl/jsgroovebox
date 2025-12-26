@@ -2,24 +2,37 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import './Secuenciador.css'
 
 import { KEYS } from './secuenciadorHelpers'
+import { seekToBar } from '../audio/transport'
 import ScaleDisplay from './ScaleDisplay'
 import Bar from './Bar'
 import { CHORD_PROGRESSIONS } from '../constants/song'
 import { getChordForDegree } from './secuenciadorHelpers'
 
-const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange, currentStep = 0, isPlaying = false }) => {
+const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange, currentStep = 0, isPlaying = false, selectedPatterns = {}, customPatterns = {}, onPatternChange, onCustomPatternChange }) => {
   const [bars, setBars] = useState([
     { id: 1, name: 'Parte 1', notes: [], repeat: 1, current: 1, key: 'C', mode: 'Major' } // notes: [{ start: 0, duration: 1, root: 'C', type: 'major' }]
   ])
   
+  // Song-level key/mode (used by applyProgressionToBar and defaults for new bars)
   const [selectedKey, setSelectedKey] = useState('C')
   const [selectedMode, setSelectedMode] = useState('Major')
-  const [isResizing, setIsResizing] = useState(false)
-  const [resizingData, setResizingData] = useState({ barIndex: null, noteIndex: null, startX: 0, initialDuration: 0, initialStart: 0 })
+
+  // Selected bar (where playback will start) and currently playing bar
+  const [selectedBarIndex, setSelectedBarIndex] = useState(0)
+  const playingBarIndex = isPlaying ? Math.max(0, Math.min(selectedBarIndex, bars.length - 1)) : null
+  const barsRef = useRef(bars)
+  const prevStepRef = useRef(null)
+  const lastEmittedStepsRef = useRef('')
+
+  // Keep ref in sync
+  useEffect(() => { barsRef.current = bars }, [bars])
+
+  // Dragging / resizing state and helper ref
   const [dragOverCell, setDragOverCell] = useState({ barIndex: null, stepIndex: null, valid: false })
   const [draggingType, setDraggingType] = useState(null)
+  const [isResizing, setIsResizing] = useState(false)
+  const [resizingData, setResizingData] = useState({ barIndex: null, noteIndex: null, startX: 0, initialDuration: 0, initialStart: 0 })
   const nextNoteIdRef = useRef(1)
-  const lastEmittedStepsRef = useRef('')
 
   const updateBarName = (barIndex, name) => {
     const newBars = [...bars]
@@ -107,6 +120,8 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange, cur
       const newBars = bars.filter((_, index) => index !== barIndex)
       setBars(newBars)
       showToast?.('Parte eliminada')
+      // clamp selected/playing indices
+      setSelectedBarIndex(prev => Math.max(0, Math.min(prev, newBars.length - 1)))
     }
   }
 
@@ -471,6 +486,16 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange, cur
     }
   }, [selectedKey, onSongSettingsChange])
 
+  useEffect(() => {
+    if (isPlaying) {
+      // Clamp selected to available bars
+      const idx = Math.max(0, Math.min(selectedBarIndex, bars.length - 1))
+      // Move transport to start of selected part
+      seekToBar(idx)
+      prevStepRef.current = currentStep
+    }
+  }, [isPlaying, selectedBarIndex, bars.length, currentStep])
+
   return (
     <div className="grid-container groovebox-section">
       <div className="top-row">
@@ -530,8 +555,26 @@ const Secuenciador = ({ showToast, onChordStepsChange, onSongSettingsChange, cur
             // Playback state for LEDs
             currentStep={currentStep}
             isPlaying={isPlaying}
+            // Pattern state and handlers
+            selectedPatterns={selectedPatterns}
+            customPatterns={customPatterns}
+            onPatternChange={onPatternChange}
+            onCustomPatternChange={onCustomPatternChange}
+            // Selection / active info
+            isSelected={barIndex === selectedBarIndex}
+            isActive={barIndex === playingBarIndex}
+            onSelect={(idx) => {
+              setSelectedBarIndex(idx)
+              // If currently playing, jump immediately to selected
+              if (isPlaying) {
+                seekToBar(idx)
+                setBars(prev => prev.map(b => ({ ...b, current: 1 })))
+                prevStepRef.current = currentStep
+              }
+            }}
           />
         ))}
+
       </div>
 
     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const BarHeader = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, moveBar, cloneBar, deleteBar, addBar, handleDragOver, handleDrop, handleDragEnd, clearBar, progressions = [], applyProgressionToBar }) => {
+const BarHeader = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, moveBar, cloneBar, deleteBar, addBar, handleDragOver, handleDrop, handleDragEnd, clearBar, progressions = [], applyProgressionToBar, isSelected = false, isActive = false, onSelect = () => {} }) => {
   const [selectedProg, setSelectedProg] = useState(progressions && progressions.length ? 0 : -1)
   return (
     <div
@@ -64,6 +64,18 @@ const BarHeader = ({ bar, barIndex, barsLength, updateBarName, updateRepeat, mov
         <button className="btn-clone fx-btn positive" type="button" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); addBar?.(); }}>Agregar parte</button>
         <button className="btn-clear fx-btn warning" type="button" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); if (bar.notes && bar.notes.length > 0) clearBar(barIndex); }} disabled={!(bar.notes && bar.notes.length > 0)} title="Limpiar todos los acordes de esta parte">Limpiar</button>
         <button className="btn-delete fx-btn danger" type="button" draggable={false} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); if (barsLength === 1) return; deleteBar(barIndex); }} disabled={barsLength === 1} title="Eliminar parte">Eliminar</button>
+      </div>
+      <div className="bar-activity">
+        <button
+          type="button"
+          className={`part-select-btn ${isSelected ? 'selected' : ''} ${isActive ? 'playing' : ''}`}
+          onClick={(e) => { e.stopPropagation(); onSelect(barIndex) }}
+          title={isActive ? 'Parte activa' : (isSelected ? 'Parte seleccionada' : 'Seleccionar parte')}
+          aria-pressed={isSelected}
+          aria-label={isActive ? 'Parte activa' : 'Seleccionar parte'}
+        >
+          <span className="part-led" aria-hidden="true" />
+        </button>
       </div>
     </div>
   )

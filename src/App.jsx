@@ -147,10 +147,10 @@ function App() {
     toneStarted,
     isPlaying,
     uiStepPulse,
-    getCurrentStep,
-    getCurrentBassStep,
+    _getCurrentStep,
+    _getCurrentBassStep,
     getCurrentChordStep,
-    getCurrentArpStep,
+    _getCurrentArpStep,
     activeTracks,
     startTone,
     togglePlay,
@@ -561,6 +561,10 @@ function App() {
               onSongSettingsChange={handleSongSettingsChange}
               currentStep={getCurrentChordStep?.() ?? 0}
               isPlaying={isPlaying}
+              selectedPatterns={selectedPatterns}
+              customPatterns={customPatterns}
+              onPatternChange={handlePatternChange}
+              onCustomPatternChange={handleCustomPatternChange}
             />
 
             <div className="tracks-grid groovebox-section">
@@ -571,17 +575,12 @@ function App() {
                   onReset={handleResetTrack}
                   activeResetTarget={lastResetTarget}
                   isActive={activeTracks[track.id] || false}
-                  selectedPattern={selectedPatterns[track.id]}
-                  customPattern={customPatterns[track.id]}
                   trackParams={trackParams[track.id]}
-                  currentStep={getCurrentStep?.() ?? 0}
                   isPlaying={isPlaying}
                   isMuted={mutedTracks[track.id] || false}
                   isSoloed={soloTracks[track.id] || false}
                   isAudible={hasSolo ? soloTracks[track.id] : !mutedTracks[track.id]}
                   onPlay={playTrack}
-                  onPatternChange={handlePatternChange}
-                  onCustomPatternChange={handleCustomPatternChange}
                   onParamChange={handleParamChange}
                   onMuteToggle={handleMuteToggle}
                   onSoloToggle={handleSoloToggle}
@@ -595,17 +594,12 @@ function App() {
                   onReset={handleResetBass}
                   activeResetTarget={lastResetTarget}
                   isActive={activeTracks[6] || false}
-                  selectedPattern={selectedPatterns[6] ?? 0}
-                  customPattern={customPatterns[6]}
                   bassParams={bassParams[6]}
-                  currentStep={getCurrentBassStep?.() ?? 0}
                   isPlaying={isPlaying}
                   isMuted={mutedTracks[6] || false}
                   isSoloed={soloTracks[6] || false}
                   isAudible={hasSolo ? soloTracks[6] : !mutedTracks[6]}
                   onPlay={playTrack}
-                  onPatternChange={handlePatternChange}
-                  onCustomPatternChange={handleCustomPatternChange}
                   onParamChange={handleBassParamChange}
                   onMuteToggle={handleMuteToggle}
                   onSoloToggle={handleSoloToggle}
@@ -619,17 +613,12 @@ function App() {
                   onReset={handleResetChords}
                   activeResetTarget={lastResetTarget}
                   isActive={activeTracks[7] || false}
-                  selectedPattern={selectedPatterns[7] ?? 0}
-                  customPattern={customPatterns[7]}
                   chordParams={chordParams[7]}
-                  currentStep={getCurrentChordStep?.() ?? 0}
                   isPlaying={isPlaying}
                   isMuted={mutedTracks[7] || false}
                   isSoloed={soloTracks[7] || false}
                   isAudible={hasSolo ? soloTracks[7] : !mutedTracks[7]}
                   onPlay={playTrack}
-                  onPatternChange={handlePatternChange}
-                  onCustomPatternChange={handleCustomPatternChange}
                   onParamChange={handleChordParamChange}
                   onMuteToggle={handleMuteToggle}
                   onSoloToggle={handleSoloToggle}
@@ -646,17 +635,12 @@ function App() {
                     onReset={handleResetArp}
                     activeResetTarget={lastResetTarget}
                     isActive={activeTracks[8] || false}
-                    selectedPattern={selectedPatterns[8] ?? 0}
-                    customPattern={customPatterns[8]}
                     arpParams={arpParams[8]}
-                    currentStep={getCurrentArpStep?.() ?? 0}
                     isPlaying={isPlaying}
                     isMuted={mutedTracks[8] || false}
                     isSoloed={soloTracks[8] || false}
                     isAudible={hasSolo ? soloTracks[8] : !mutedTracks[8]}
                     onPlay={playTrack}
-                    onPatternChange={handlePatternChange}
-                    onCustomPatternChange={handleCustomPatternChange}
                     onParamChange={handleArpParamChange}
                     onMuteToggle={handleMuteToggle}
                     onSoloToggle={handleSoloToggle}

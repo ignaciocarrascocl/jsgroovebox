@@ -1,124 +1,17 @@
-import { useState } from 'react'
-import { POLY_SYNTH_PATTERNS, WAVE_TYPES, POLY_SYNTH_SOUND_PRESETS } from '../constants/polySynth'
+import { WAVE_TYPES, POLY_SYNTH_SOUND_PRESETS } from '../constants/polySynth'
 import Knob from './Knob'
 import TrackHead from './TrackHead'
 import SoundPresets from './SoundPresets'
-import PatternSelector from './PatternSelector'
 import './PolySynthTrack.css'
-
-// Pattern step editor for chords (16 steps per bar, repeats each bar)
-const ChordPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) => {
-  const cycleStep = (index) => {
-    const newPattern = [...pattern]
-    newPattern[index] = (newPattern[index] + 1) % 5 // 0, 1, 2, 3, 4
-    onChange(newPattern)
-  }
-
-  const getStepLabel = (value) => {
-    switch (value) {
-      case 1: return 'T'  // Triad
-      case 2: return '7'  // Seventh
-      case 3: return 'I'  // Inversion
-      case 4: return 'S'  // Stab
-      default: return ''
-    }
-  }
-
-  // currentStep is 0-63, pattern step is 0-15 (repeats each bar)
-  const patternStep = currentStep % 16
-
-  return (
-    <div className="chord-pattern-editor">
-      {pattern.map((step, idx) => (
-        <div
-          key={idx}
-          className={`chord-pattern-step step-type-${step} ${isPlaying && patternStep === idx ? 'current' : ''} ${idx % 4 === 0 ? 'beat-start' : ''}`}
-          style={{ '--step-color': color }}
-          onClick={() => cycleStep(idx)}
-        >
-          {getStepLabel(step)}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// Chord pattern accordion selector
-const ChordPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, isPlaying, color }) => {
-  const [isOpen, setIsOpen] = useState(false)
-
-  // currentStep is 0-63, pattern step is 0-15 (repeats each bar)
-  const patternStep = currentStep % 16
-
-  const selectedPattern = patterns[selectedIndex]
-
-  const handleSelect = (idx) => {
-    onSelect(idx)
-    setIsOpen(false)
-  }
-
-  // Get step type class for chord patterns (0, 1, 2, 3, 4)
-  const getStepClass = (step) => {
-    if (step === 0) return ''
-    return `step-type-${step}`
-  }
-
-  return (
-    <div className="chord-pattern-accordion" style={{ '--accordion-color': color }}>
-      {/* Header - Selected Pattern */}
-      <div className="accordion-header" onClick={() => setIsOpen(!isOpen)}>
-        <div className="header-pattern">
-          {selectedPattern?.pattern.map((step, idx) => (
-            <div
-              key={idx}
-              className={`header-step ${getStepClass(step)} ${isPlaying && patternStep === idx ? 'current' : ''}`}
-            />
-          ))}
-        </div>
-        <span className="header-name">{selectedPattern?.name || 'Select'}</span>
-        <span className="accordion-icon">{isOpen ? '−' : '+'}</span>
-      </div>
-
-      {/* Content - All Patterns */}
-      {isOpen && (
-        <div className="accordion-content">
-          {patterns.map((pattern, idx) => (
-            <div
-              key={idx}
-              className={`pattern-option ${selectedIndex === idx ? 'selected' : ''}`}
-              onClick={() => handleSelect(idx)}
-            >
-              <div className="option-pattern">
-                {pattern.pattern.map((step, stepIdx) => (
-                  <div
-                    key={stepIdx}
-                    className={`option-step ${getStepClass(step)}`}
-                  />
-                ))}
-              </div>
-              <span className="option-name">{pattern.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 const ChordsTrack = ({
   track,
   isActive,
-  selectedPattern,
-  customPattern,
   chordParams,
-  currentStep,
-  isPlaying,
   isMuted,
   isSoloed,
   isAudible,
   onPlay,
-  onPatternChange,
-  onCustomPatternChange,
   onParamChange,
   onMuteToggle,
   onSoloToggle,
@@ -178,19 +71,7 @@ const ChordsTrack = ({
         color={track.color}
       />
 
-      {/* Pattern Section */}
-      <PatternSelector
-        patterns={POLY_SYNTH_PATTERNS}
-        selectedIndex={selectedPattern}
-        customPattern={customPattern}
-        onPatternChange={(idx) => onPatternChange(track.id, idx)}
-        onCustomPatternChange={(p) => onCustomPatternChange(track.id, p)}
-        currentStep={currentStep}
-        isPlaying={isPlaying}
-        color={track.color}
-        PatternAccordionComponent={ChordPatternAccordion}
-        PatternEditorComponent={ChordPatternEditor}
-      />
+      {/* Pattern selection moved to Secuenciador (Bar) */}
 
       {/* Controls Section - All Knobs */}
       <div className="chord-track-controls">

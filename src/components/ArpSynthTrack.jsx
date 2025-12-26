@@ -1,123 +1,19 @@
-import { useState } from 'react'
-import { ARP_SYNTH_PATTERNS, WAVE_TYPES, ARP_SYNTH_SOUND_PRESETS } from '../constants/arpSynth'
+import { WAVE_TYPES, ARP_SYNTH_SOUND_PRESETS } from '../constants/arpSynth'
 import Knob from './Knob'
 import TrackHead from './TrackHead'
 import SoundPresets from './SoundPresets'
-import PatternSelector from './PatternSelector'
 import './MonoSynthTrack.css' // reuse mono synth styles for consistency
 
-// Pattern step editor for arp (16 steps per bar, repeats each bar)
-const ArpPatternEditor = ({ pattern, onChange, currentStep, isPlaying, color }) => {
-  const cycleStep = (index) => {
-    const newPattern = [...pattern]
-    newPattern[index] = (newPattern[index] + 1) % 4 // 0,1,2,3
-    onChange(newPattern)
-  }
-
-  const getStepLabel = (value) => {
-    switch (value) {
-      case 1: return '1'
-      case 2: return '2'
-      case 3: return '3'
-      default: return ''
-    }
-  }
-
-  // currentStep is 0-63, pattern step is 0-15 (repeats each bar)
-  const patternStep = currentStep % 16
-
-  return (
-    <div className="bass-pattern-editor">
-      {pattern.map((step, idx) => (
-        <div
-          key={idx}
-          className={`bass-pattern-step step-type-${step} ${isPlaying && patternStep === idx ? 'current' : ''} ${idx % 4 === 0 ? 'beat-start' : ''}`}
-          style={{ '--step-color': color }}
-          onClick={() => cycleStep(idx)}
-        >
-          {getStepLabel(step)}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// Arp pattern accordion selector - like chord/bass
-const ArpPatternAccordion = ({ patterns, selectedIndex, onSelect, currentStep, isPlaying, color }) => {
-  const [isOpen, setIsOpen] = useState(false)
-
-  // currentStep is 0-63, pattern step is 0-15 (repeats each bar)
-  const patternStep = currentStep % 16
-
-  const selectedPattern = patterns[selectedIndex]
-
-  const handleSelect = (idx) => {
-    onSelect(idx)
-    setIsOpen(false)
-  }
-
-  // Get step type class for patterns (0-3)
-  const getStepClass = (step) => {
-    if (step === 0) return ''
-    return `step-type-${step}`
-  }
-
-  return (
-    <div className="bass-pattern-accordion" style={{ '--accordion-color': color }}>
-      {/* Header - Selected Pattern */}
-      <div className="accordion-header" onClick={() => setIsOpen(!isOpen)}>
-        <div className="header-pattern">
-          {selectedPattern?.pattern.map((step, idx) => (
-            <div
-              key={idx}
-              className={`header-step ${getStepClass(step)} ${isPlaying && patternStep === idx ? 'current' : ''}`}
-            />
-          ))}
-        </div>
-        <span className="header-name">{selectedPattern?.name || 'Select'}</span>
-        <span className="accordion-icon">{isOpen ? '−' : '+'}</span>
-      </div>
-
-      {/* Content - All Patterns */}
-      {isOpen && (
-        <div className="accordion-content">
-          {patterns.map((pattern, idx) => (
-            <div
-              key={idx}
-              className={`pattern-option ${selectedIndex === idx ? 'selected' : ''}`}
-              onClick={() => handleSelect(idx)}
-            >
-              <div className="option-pattern">
-                {pattern.pattern.map((step, stepIdx) => (
-                  <div
-                    key={stepIdx}
-                    className={`option-step ${getStepClass(step)}`}
-                  />
-                ))}
-              </div>
-              <span className="option-name">{pattern.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+// Pattern selection moved to Secuenciador (Bar)
 
 const ArpTrack = ({
   track,
   isActive,
-  selectedPattern,
-  customPattern,
   arpParams,
-  currentStep,
-  isPlaying,
   isMuted,
   isSoloed,
   isAudible,
   onPlay,
-  onPatternChange,
-  onCustomPatternChange,
   onParamChange,
   onMuteToggle,
   onSoloToggle,
@@ -174,20 +70,6 @@ const ArpTrack = ({
         presets={ARP_SYNTH_SOUND_PRESETS}
         onApplyPreset={handleSoundPreset}
         color={track.color}
-      />
-
-      {/* Pattern Section */}
-      <PatternSelector
-        patterns={ARP_SYNTH_PATTERNS}
-        selectedIndex={selectedPattern}
-        customPattern={customPattern}
-        onPatternChange={(idx) => onPatternChange(track.id, idx)}
-        onCustomPatternChange={(p) => onCustomPatternChange(track.id, p)}
-        currentStep={currentStep}
-        isPlaying={isPlaying}
-        color={track.color}
-        PatternAccordionComponent={ArpPatternAccordion}
-        PatternEditorComponent={ArpPatternEditor}
       />
 
       {/* Controls Section - All Knobs */}

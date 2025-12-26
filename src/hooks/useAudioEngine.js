@@ -2,11 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import * as Tone from 'tone'
 
 // Import constants
-import { PATTERNS } from '../constants/patterns'
-import { MONO_SYNTH_PATTERNS, MONO_SYNTH_TOTAL_STEPS } from '../constants/monoSynth'
-import { POLY_SYNTH_PATTERNS, POLY_SYNTH_TOTAL_STEPS } from '../constants/polySynth'
 import { CHORD_PROGRESSIONS } from '../constants/song'
-import { ARP_SYNTH_PATTERNS, ARP_SYNTH_TOTAL_STEPS } from '../constants/arpSynth'
 
 // Import utilities
 import {
@@ -19,8 +15,6 @@ import {
 import {
   getBassNote,
   getChordNotes,
-  getBassNoteFromRoot,
-  getChordNotesFromRoot
 } from '../utils/musicTheory.js'
 
 // Import audio modules
@@ -28,8 +22,8 @@ import { createDrumSynths, createMelodicSynths } from '../audio/synths.js'
 import { createTrackEffects } from '../audio/effects.js'
 import { createMixer, wireAudioGraph } from '../audio/mixer.js'
 import { createMetering } from '../audio/metering.js'
-import { startTone, togglePlay as modularTogglePlay, pause as modularPause } from '../audio/transport.js'
-import { playTrackNote, createSequencerCallback } from '../audio/sequencer.js'
+import { togglePlay as modularTogglePlay, pause as modularPause } from '../audio/transport.js'
+import { createSequencerCallback } from '../audio/sequencer.js'
 
 // Default track parameters - tuned per instrument type
 const DEFAULT_TRACK_PARAMS = {

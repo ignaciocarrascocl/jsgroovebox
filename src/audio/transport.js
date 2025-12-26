@@ -112,4 +112,14 @@ const pause = (toneStarted, isPlaying, setIsPlaying, effectsRef) => {
   }
 }
 
-export { startTone, togglePlay, pause }
+const seekToBar = (barIndex) => {
+  try {
+    const transport = Tone.getTransport()
+    // Position format is bars:quarters:sixteenths (e.g., '2:0:0')
+    transport.position = `${barIndex}:0:0`
+  } catch {
+    // ignore if transport not available
+  }
+}
+
+export { startTone, togglePlay, pause, seekToBar }
